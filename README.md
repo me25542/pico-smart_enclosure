@@ -81,6 +81,9 @@ Whether it's reporting bugs or writing code, your contributions will be helpful.
 - Support for basic control through printer GPIO pins (for printers without I2C)
     - Have a small number of pins be able to, say, set the temperature to one of two states
     - Cut out any unneeded functionality (like setting the lights, fine temperature control, etc.)
+- Fixing my misuseof .h files
+	- I, uh, might have misused the .h file format a bit
+	- If you know how to fix this, plese do! 
 - Anything else you can think of!
     - If you can, implement it!
     - If you can't, raise an issue requesting the feature
