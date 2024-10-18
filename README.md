@@ -1,7 +1,6 @@
 # pico-smart_enclosure
 ### Automatic active temperature control and lighting for a 3d printer enclosure.
-Uses a raspberry Pi Pico connected to the printer via I2C to provide **automatic** active temperature control and full control via gcode.
-
+Uses a raspberry Pi Pico connected to the printer via I2C to provide **automatic** active temperature control and full control of other enclosure functions via gcode (M260).
 
 ## Features
 - **Automatic** active temperature control
@@ -29,7 +28,7 @@ Uses a raspberry Pi Pico connected to the printer via I2C to provide **automatic
         - Turns off lights
         - Turns off the power supply
         - Stops communication with printer
-        - Sends data about the error via USB every 30 seconds, indefinitly
+        - Sends data about the error via USB every 30 seconds, indefinitely
 
 
 ## To use
@@ -64,4 +63,73 @@ However, many other printers *might* have I2C connectors, so it's worth checking
 
 A raspberry Pi might also work (they have I2C) if you are using one for Octoprint or Klipper already, with a bit of modification.
 
+## Contribution
+If you want to contribute in any way, feel free to do so!
 
+Whether it's reporting bugs or writing code, your contributions will be helpful.
+
+### Ideas for features to add
+- Oled display + UI
+    - Data display via a small I2C-connected screen
+    - Navigation with buttons
+- Thermal runaway protection
+    - protect heaters from thermal runaway
+- Smooth control of the print done light
+    - Turn the print done light on and off smoothly
+- Audible notification for print done
+    - Play a small chime or sound when the print is set to done
+- Support for basic control through printer GPIO pins (for printers without I2C)
+    - Have a small number of pins be able to, say, set the temperature to one of two states
+    - Cut out any unneeded functionality (like setting the lights, fine temperature control, etc.)
+- Anything else you can think of!
+    - If you can, implement it!
+    - If you can't, raise an issue requesting the feature
+
+Thank you for any and all contributions!
+
+## Received I2C values, and what they do:
+
+**Values 0-3 set the enclosure mode:**
+- 0 = error (shuts everything down and enters a safe state)
+- 1 = standby (doesn't really do anything, turns off the PSU to save power when the lights are off)
+- 2 = cooldown (turns on the vent fan until the enclosure temp is close enough to the outside temp)
+- 3 = printing (maintains the target temperature by heating or cooling as is required)
+
+**Values 4-9 set other things:**
+- 4 = print done
+- 5 = print not done
+- 6 = turns enclosure lights on
+- 7 = turn enclosure lights off
+- 8 = changes enclosure lights state (from off to on and vice versa)
+- 9 = reserved for future use (sets mode to error)
+	
+**Values 10-99 set target temp:**
+- 10 = target temp of 10 °C
+- 11 = target temp of 11 °C
+- ...
+- 98 = target temp of 98 °C
+- 99 = target temp of 99 °C
+
+**Values 100-255 are reserved; as such they set the mode to error**
+
+### Notes:
+
+If the enclosure lights state are set, and are changed, in the same transmission to the enclosure:
+- Except in very rare cases, the lights will be set to the specified value and *then* changed.
+- However, this is not guaranteed, and it is not recommended to set the lights *and* change them in the same transmission
+
+If the lights are set to one value, and then to another, in the same transmission to the enclosure:
+- The last sent value will be used
+
+If the set temperature is set to one value (e.g 10 °C), and then to another (e.g. 40 °C), in the same transmission to the enclosure:
+- The last sent value will be used
+
+If the print is set to one value (e.g. done) and then to another (e.g. not done) in the same transmission to the enclosure:
+- The last sent value will be used
+
+If the mode is set to one value (e.g. printing) and then to another (e.g. standby) in the same transmission to the enclosure:
+- The last sent value will be used
+
+If the set temperature value is not specified at the start of a print, the last received set temperature value is used
+
+### WARNING: values 9 and 100-255 set the mode to error (as they are reserved for feature use), putting the enclosure into safe mode
