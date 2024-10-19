@@ -169,4 +169,4 @@ If the set temperature value is not specified at the start of a print, the last 
 
 If the max fan speed is not specified it will be set to 100%
 
-### WARNING: values 9 and 105-255 set the mode to error (as they are reserved for feature use), putting the enclosure into safe mode
+### WARNING: values 9 and 105-255 set the mode to error (as they are reserved for future use), putting the enclosure into safe mode
