@@ -74,6 +74,7 @@ Uses a raspberry Pi Pico connected to the printer via I2C to provide **automatic
 - 4x white 5mm LEDs
 - Some 12v white LED strips
 - Some sort of connector to plug into your printer's control board (Molex Click-Mate for a MK4)
+- Some printed parts ([this](https://www.printables.com/@_me_/collections/1713789) might be a good starting place)
 - Probably some other little things that I forgot. Use common sense.
 
 ## Compatibility
