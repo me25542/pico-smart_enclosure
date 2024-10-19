@@ -52,8 +52,7 @@ Uses a raspberry Pi Pico connected to the printer via I2C to provide **automatic
   - Some of these have dependencies of their own, just select "install all" when prompted in arduino IDE
 
 ### Wiring diagram:
-![image](https://github.com/user-attachments/assets/9aa6b92d-6b72-4af4-a74f-f3a203245059)
-
+![image](https://github.com/user-attachments/assets/5ea24fb2-6b94-49b1-925b-52193d9423ab)
 
 ## Compatibility
 This design is compatible with any printer that supports M260 gcode commands and has an I2C bus that you can connect to.
