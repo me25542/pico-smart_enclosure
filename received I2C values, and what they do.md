@@ -21,7 +21,14 @@
 - 98 = target temp of 98 °C
 - 99 = target temp of 99 °C
 
-**Values 100-255 are reserved; as such they set the mode to error**
+**Values 100-104 set max fan speed:**
+- 100 = max fan speed of 0% (vents will still be opened)
+- 101 = max fan speed of 25%
+- 102 = max fan speed of 50%
+- 103 = max fan speed of 75%
+- 104 = max fan speed of 100%
+
+**Values 105-255 are reserved; as such they set the mode to error**
 
 ### Notes:
 
@@ -43,4 +50,6 @@ If the mode is set to one value (e.g. printing) and then to another (e.g. standb
 
 If the set temperature value is not specified at the start of a print, the last received set temperature value is used
 
-### WARNING: values 9 and 100-255 set the mode to error (as they are reserved for feature use), putting the enclosure into safe mode
+If the max fan speed is not specified it will be set to 100%
+
+### WARNING: values 9 and 105-255 set the mode to error (as they are reserved for feature use), putting the enclosure into safe mode
