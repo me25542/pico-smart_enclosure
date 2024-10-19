@@ -32,6 +32,8 @@ void standby() {
   //  set the lights:
   setIndicatorLights(false, false, false, true);  //  turn on the "standby" light, turn off the others
 
+  maxFanSpeed = defaultMaxFanSpeed;  //  reset the max fan speed
+
   //  turn off the fan and heaters:
   setHeaters(false, false, fanOffVal);  //  turn off heater 1 and heater 2, turn off the fan
 
@@ -52,6 +54,8 @@ void cooldown() {
 
   //  set the lights:
   setIndicatorLights(false, false, true, false);  //  turn on the "cooldown" light, turn off the others
+
+  maxFanSpeed = defaultMaxFanSpeed;  //  reset the max fan speed
 
   //  get temps:
   getTemp();

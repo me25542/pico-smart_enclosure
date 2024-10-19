@@ -74,6 +74,9 @@ void receiveEvent(int howMany) {
     } else if (recVal < 100) {  //  if it is 10-99:
       globalSetTemp = recVal;  //  set the target temp
 
+    } else if (recVal < 105) {  //  if it is 100-104:
+      maxFanSpeed = int(map(long(recVal), 100, 104, 0, 255));  //  set maxFanSpeed to a value from 0-255 based on the recieved value
+    
     } else {
       mode = 0;
       errorOrigin = 5;
@@ -123,6 +126,9 @@ void serialReceiveEvent() {
     } else if (serialRecVal < 100) {  //  if it is 10-99:
       globalSetTemp = serialRecVal;  //  set the target temp
 
+    } else if (serialRecVal < 105) {  //  if it is 100-104:
+      maxFanSpeed = int(map(long(serialRecVal), 100, 104, 0, 255));  //  set maxFanSpeed to a value from 0-255 based on the recieved value
+    
     } else {
       mode = 0;
       errorOrigin = 8;

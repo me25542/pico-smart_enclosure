@@ -26,57 +26,56 @@
 #include <Servo.h>  //  include the library for controling servos
 #include <Bounce2.h>  //  include the debouncing library
 
-//  define pins, etc. here:
+//  pins (how did you wire everything up?):
 
 const int ledPin = 25;  //  this is set in hardware; don't change
   //  servo pins:
-const int servo2Pin = 20;  //  this is set in hardware; don't change
-const int servo1Pin = 19;  //  this is set in hardware; don't change
+const int servo2Pin = 20;  //  the pin connected to servo 1 | output
+const int servo1Pin = 19;  //  the pin connected to servo 2 | output
 
-const int pokPin = 18;  //  this is set in hardware; don't change
-const int printDoneLightPin = 17;  //  this is set in hardware; don't change
+const int pokPin = 18;  //  the pin connected to the PSUs P_OK pin | input
+const int printDoneLightPin = 17;  //  the pin connected to the print done light | output
   //  mode indicator light pins:
-const int printingLightPin = 16;  //  this is set in hardware; don't change
-const int cooldownLightPin = 15;  //  this is set in hardware; don't change
-const int standbyLightPin = 14;  //  this is set in hardware; don't change
-const int errorLightPin = 13;  //  this is set in hardware; don't change
+const int printingLightPin = 16;  //  the pin connected to the "printing" mode indicator light | output
+const int cooldownLightPin = 15;  //  the pin connected to the "cooldown" mode indicator light | output
+const int standbyLightPin = 14;  //  the pin connected to the "standby" mode indicator light | output
+const int errorLightPin = 13;  //  the pin connected to the "error" mode indicator light | output
   //  user input switch pins:
-const int coolDownSwitchPin = 12;  //  this is set in hardware; don't change
-const int lightSwitchPin = 11;  //  this is set in hardware; don't change
+const int coolDownSwitchPin = 12;  //  the pin connected to the "cooldown" switch / button | input
+const int lightSwitchPin = 11;  //  the pin connected to the "lights" switch / button | input
   //  heater pins:
-const int heater1Pin = 10;  //  this is set in hardware; don't change
-const int heater2Pin = 9;  //  this is set in hardware; don't change
+const int heater1Pin = 10;  //  the pin connected to heater 1 | output
+const int heater2Pin = 9;  //  the pin connected to heater 2 | output
   //  pin 8 is used to reset the pico ocasionally to avoid milis() overflow
-const int resetPin = 8;  //  EXPERIMENTAL
+const int resetPin = 8;  //  EXPERIMENTAL | output
   
   //  pins 7 & 6 are used for I2C1
-const int I2C1_SCL = 7;  //  this is set in hardware; don't change
-const int I2C1_SDA = 6;  //  this is set in hardware; don't change
+const int I2C1_SCL = 7;  //  this is kind of set in hardware; be careful changing
+const int I2C1_SDA = 6;  //  this is kind of set in hardware; be careful changing
 
 //  pins 4 & 5 are used for I2C0
-const int I2C0_SDA = 4;  //  this is set in hardware; don't change
-const int I2C0_SCL = 5;  //  this is set in hardware; don't change
+const int I2C0_SDA = 4;  //  this is kind of set in hardware; be careful changing
+const int I2C0_SCL = 5;  //  this is kind of set in hardware; be careful changing
 
-const int doorSwitchPin = 3;
-const int lightsPin = 2;  //  this is set in hardware; don't change
-const int psPin = 1;  //  this is set in hardware; don't change
-const int fanPin = 0;  //  this is set in hardware; don't change
+const int doorSwitchPin = 3;  //  the pin connected to the door safety switch | input
+const int lightsPin = 2;  //  the pin connected to the enclosure lights | output
+const int psPin = 1;  //  the pin connected to the PSUs power on pin | output
+const int fanPin = 0;  //  the pin connected to the vent fan | output
 
 //  define other things here:
+  //  preferences (how it will opperate)
 const int maxInOutTemp = 75;  //  the maximum temp the inside or outside of the enclosure can be before triggering an error
 const int maxHeaterTemp = 90;  //  the maximum temp the heater can reach before triggering an error
 const int minTemp = 0;  //  the minimum temp any of the sensors can read before triggering an error
 const int fanOffVal = 0;  //  the pwm value used when the fan should be off
 const int fanMidVal = 127;  //  the pwm value used when the fan should be halfway on
 const int fanOnVal = 255;  //  the pwm value used when the fan should be all the way on
+const int defaultMaxFanSpeed = 255;  //  the default maxumum fan speed (what will be used if nothing else is specified)
 const int fanKickstartTime = 500; //  the time (in miliseconds) that the fan will be turned on at 100% before being set to its target value
 const int bigDiff = 3;  //  the value used to define a large temp difference (in deg. c.)
-const int cooldownDif = 7;  //  if the inside and outside temps are within this value of eachother, cooldown() will go to standby()
-const int dimingTime = 2;  //  this x 255 = the time (in miliseconds) that togling the lights will take
+const int cooldownDif = 6;  //  if the inside and outside temps are within this value of eachother, cooldown() will go to standby()
+const int dimingTime = 2;  //  this * 255 = the time (in miliseconds) that togling the lights will take
 const int i2cTempSensorRes = 1;  //  0 = 0.5, 1 = 0.25, 2 = 0.125, 3 = 0.625  (higher res takes longer to read)
-const int heaterTempSensorAdress = 0x18;  //  this is the I2C adress for the heater temp sensor
-const int inTempSensorAdress = 0x19;  //  this is the I2C adress for the in temp sensor
-const int outTempSensorAdress = 0x1A;  //  this is the I2C adress for the out temp sensor
 const int maxSerialStartupTries = 100;  //  this is the number of tries (or the number of 10ms periods) that will be taken to connect to usb before giving up
 const int maxCoreOneShutdownTime = 2500;  //  the maximum time (in miliseconds) that the the second core (core1) can take to acknowledge an error andshut down
 const int servo1Open = 180;  //  the "open" position for servo 1
@@ -88,11 +87,19 @@ const long serialSpeed = 250000;  //  the buad rate that will be used for serial
 
 const unsigned long debounceTime = 25000;  //  this is the debounce delay, in microseconds (1μs = 1s/1,000,000)
 
+  //  hardware (depends on how you wired everything)
+const int heaterTempSensorAdress = 0x18;  //  this is the I2C adress for the heater temp sensor
+const int inTempSensorAdress = 0x19;  //  this is the I2C adress for the in temp sensor
+const int outTempSensorAdress = 0x1A;  //  this is the I2C adress for the out temp sensor
+
+  //  default values for dynamic variables
+
 //const float testThermalRunawayTemps[] = {-3, 0, 1, 2.5, 4, 5.5, 7, 8.5};  //  the temp diference between unheated and heated air at some checkpoints
 //const unsigned long testThermalRunawayTimes[] = {0, 10000, 20000, 40000, 60000, 80000, 100000, 120000};  //  the times that the above temps will be checked at
 
 volatile int mode = 1;  //  tracks the enclosures operating mode (0 = error, 1 = standby, 2 = cooldown, 3 = printing)
 volatile int globalSetTemp = 10;  //  tracks what temperature the enclosure should be at
+volatile int maxFanSpeed = defaultMaxFanSpeed;  //  tracks the maximum fan speed alowable
 volatile int errorOrigin = 0;  /*  records where an error originated (usefull for diagnostics)
 (0 = N/A, 1 = Heater check failure, 2 = unrecognised mode, 3 = failure to start I2C temp sensors, 4 = printer commanded error, 5 = invalid printer command, 6 = sensors disconnected, 7 = serial commanded error, 8 = invalid serial command)*/
 volatile int errorInfo = 0;  //  records aditionall info about any posible errors
@@ -121,7 +128,7 @@ float outTemp = 20;  //  tracks the temp outside the enclosure
 Servo servo1;
 Servo servo2;
 
-//  define button variables
+//  set button variables
 Bounce2::Button door_switch = Bounce2::Button();
 Bounce2::Button light_switch = Bounce2::Button();
 Bounce2::Button coolDown_switch = Bounce2::Button();

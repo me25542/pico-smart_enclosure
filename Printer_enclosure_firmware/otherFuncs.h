@@ -123,7 +123,7 @@ void setHeaters(bool h1_On, bool h2_On, int fanVal) {
     setServos(servo1Open, servo2Open);  //  move the servos to open
     digitalWrite(fanPin, HIGH);  //  turn the fan on at 100%
     delay(fanKickstartTime);  //  and wait for a bit to let it spin up
-    analogWrite(fanPin, fanVal);  //  then set the fan speed to its target value
+    analogWrite(fanPin, min(fanVal, maxFanSpeed));  //  then set the fan speed to its target value or the maximum fan speed, whichever is less
 
   } else {  //  if the fan is being set to 0:
     setServos(servo1Closed, servo2Closed);  //  move the servos to closed
