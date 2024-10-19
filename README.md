@@ -5,8 +5,10 @@ Uses a raspberry Pi Pico connected to the printer via I2C to provide **automatic
 ## Features
 - **Automatic** active temperature control
 - **Direct** communication with the printer (via I2C)
-- **Smooth** lighting control
+- **Smooth** PWM lighting control
 - Fan kickstarting
+- PWM fan speed control
+- Printer-controllable max fan speed
 - Motorized fan flap control (optional)
 - Print done notification (light turns on)
 - Use of the standby capabilities on ATX PSUs to save power
@@ -104,9 +106,9 @@ Whether it's reporting bugs or writing code, your contributions will be helpful.
 - Support for basic control through printer GPIO pins (for printers without I2C)
     - Have a small number of pins be able to, say, set the temperature to one of two states
     - Cut out any unneeded functionality (like setting the lights, fine temperature control, etc.)
-- Fixing my misuseof .h files
+- Fixing my misuse of .h files
 	- I, uh, might have misused the .h file format a bit
-	- If you know how to fix this, plese do! 
+	- If you know how to fix this, please do! 
 - Anything else you can think of!
     - If you can, implement it!
     - If you can't, raise an issue requesting the feature
@@ -136,7 +138,14 @@ Thank you for any and all contributions!
 - 98 = target temp of 98 °C
 - 99 = target temp of 99 °C
 
-**Values 100-255 are reserved; as such they set the mode to error**
+**Values 100-104 set max fan speed:**
+- 100 = max fan speed of 0% (vents will still be opened)
+- 101 = max fan speed of 25%
+- 102 = max fan speed of 50%
+- 103 = max fan speed of 75%
+- 104 = max fan speed of 100%
+
+**Values 105-255 are reserved; as such they set the mode to error**
 
 ### Notes:
 
@@ -158,4 +167,6 @@ If the mode is set to one value (e.g. printing) and then to another (e.g. standb
 
 If the set temperature value is not specified at the start of a print, the last received set temperature value is used
 
-### WARNING: values 9 and 100-255 set the mode to error (as they are reserved for feature use), putting the enclosure into safe mode
+If the max fan speed is not specified it will be set to 100%
+
+### WARNING: values 9 and 105-255 set the mode to error (as they are reserved for feature use), putting the enclosure into safe mode
