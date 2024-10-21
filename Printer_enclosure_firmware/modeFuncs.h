@@ -39,9 +39,8 @@ void standby() {
 
   //  move servos to home position:
   setServos(servo1Closed, servo2Closed);  //  move servos 1 and 2 to home
-  delay(1000);  //  wait one second for the servos to actually move
 
-  setPSU(lightState || dontTurnOffThePSU); //  turn on the PSU if the lights are on OR if the PSU shouldn't be turned off
+  setPSU(lightState || dontTurnOffThePSU || printDone); //  turn on the PSU if the lights are on OR if the PSU shouldn't be turned off OR if the print is done (the print done light is on)
 
   printingLastLoop = false;  //  remember that last loop wasn't in printing mode
 
@@ -62,7 +61,7 @@ void cooldown() {
 
   if ((inTemp - cooldownDif) > outTemp) {  //  if the temp inside is much greater than the temp outside:
     //  ensure the fan and the lights have power if they need it:
-    setPSU(!doorOpen || lightState || dontTurnOffThePSU);  //  if the door is closed OR if the lights are on OR the PSU shouldn't be turned off, turn on the PSU. otherwise, turn it off
+    setPSU(!doorOpen || lightState || dontTurnOffThePSU || printDone);  //  if the door is closed OR if the lights are on OR the PSU shouldn't be turned off OR if the print is done (print done light on), turn on the PSU. otherwise, turn it off
 
     //  set the heaters and fan:
     setHeaters(false, false, fanOnVal);  //  turn off heater 1 and heater 2, turn on the fan at 100% if the door is closed
