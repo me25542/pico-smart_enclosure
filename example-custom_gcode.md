@@ -8,7 +8,12 @@
 
 This start gcode is based off of commands compatible with v1.1.0
 
-It should be compatible with any v1.x version later than this
+List of compatible versions:
+- 1.1.0
+- 1.1.1
+- 1.2.0
+
+It should also be compatible with any v1.x version later than this
 
 ### Start gcode:
 
