@@ -87,8 +87,8 @@ void receiveEvent(int howMany) {
 
 void serialReceiveEvent() {
   Serial.println("serialRecieveEvent() called");  //  print a message over serial (USB)
-  while (Serial.available()) {  //  while there are received bytes in the buffer:
-    int serialRecVal = Serial.read();  // set serialRecVal ("it") to the first byte in the buffer
+  if (Serial.available()) {  //  if there are received bytes in the buffer:
+    int serialRecVal = int(Serial.parseInt());  // set serialRecVal ("it") to the first valid set of characters in the buffer, converted from a string of ASCII chars to an int
     Serial.print("byte recieved: ");  //  print a message over serial (USB)
     Serial.println(serialRecVal);  //  print a message over serial (USB)
 
@@ -133,6 +133,11 @@ void serialReceiveEvent() {
       mode = 0;
       errorOrigin = 8;
       errorInfo = serialRecVal;
+    }
+
+    //  empty the rest of the buffer:
+    while (Serial.available()) {  //  while there are bytes in the buffer:
+      Serial.read();  //  read a byte from the buffer (don't realy *do* anything with it, though)
     }
   }
 }

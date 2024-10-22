@@ -156,31 +156,47 @@ void setPrintDoneLight(bool pdl_State) {
   digitalWrite(printDoneLightPin, pdl_State);  //  set the state of the print done light
 }
 
-//  the function that starts serial (USB) comunication (takes ~10ms)
+//  the function that starts serial (USB) comunication (takes ~10ms) | returns 1 if a computer is connected, 0 if not
 bool startSerial() {
   Serial.begin(serialSpeed);  //  start serial (over USB) with a baud rate of 115200
   return Serial;  //  send back to the calling function if serial is connected
 }
 
-// the function that gets all temp sensor data
-void getTemp() {
+// the function that gets all temp sensor data | returns 0 on failure, 1 on sucess
+bool getTemp() {
   Serial.print("getTemp() called");  //  print a message over serial (USB)
+
   //  wake up I2C temp sensors:
   heaterTempSensor.wake();
   inTempSensor.wake();
   outTempSensor.wake();
 
-  //  read temp from I2C temp sensors:
-  heaterTemp = heaterTempSensor.readTempC();
-  inTemp = inTempSensor.readTempC();
-  outTemp = outTempSensor.readTempC();
+  //  make some temporary variables to store the sum of all mesured temps (for avereging)
+  float tempHeaterTemp = 0;
+  float tempInTemp = 0;
+  float tempOutTemp = 0;
 
-  //  check data for reasonability:
-  if ((heaterTemp <= minTemp || inTemp <= minTemp || outTemp <= minTemp) || (heaterTemp >= maxHeaterTemp || inTemp >= maxInOutTemp || outTemp >= maxInOutTemp)) {
-    mode = 0;  //  set mode to error
-    errorOrigin = 1;  //  record where the error came from
-    Serial.println("error with temp sensor data detected in getTemp()");
-    return;  //  go to the start of the main loop
+  for (int i = 0; i < sensorReads; i++) {  //  do the stuff in this loop the number of times set by sensorReads
+    heaterTemps[i] = heaterTempSensor.readTempC();  //  store the mesured temperature
+    tempHeaterTemp += heaterTemps[i];  //  add the messured temperature to the temporary variable
+    inTemps[i] = inTempSensor.readTempC();  //  store the mesured temperature
+    tempInTemp += inTemps[i];  //  add the messured temperature to the temporary variable
+    outTemps[i] = outTempSensor.readTempC();  //  store the mesured temperature
+    tempOutTemp += outTemps[i];  //  add the messured temperature to the temporary variable
+  }
+
+  heaterTemp = (tempHeaterTemp / sensorReads);  //  set the temperature to the temporary variable devided by the number of times the temperature was read
+  inTemp = (tempInTemp / sensorReads);  //  set the temperature to the temporary variable devided by the number of times the temperature was read
+  outTemp = (tempOutTemp / sensorReads);  //  set the temperature to the temporary variable devided by the number of times the temperature was read
+
+  //  check individual sensor readings for reasonability (if all these are acceptable, the average will also be, making checking the average redundant):
+  for (int i = 0; i < sensorReads; i++) {
+    if ((heaterTemps[i] <= minTemp || inTemps[i] <= minTemp || outTemps[i] <= minTemp) || (heaterTemps[i] >= maxHeaterTemp || inTemps[i] >= maxInOutTemp || outTemps[i] >= maxInOutTemp)) {
+      mode = 0;  //  set mode to error
+      errorOrigin = 1;  //  record where the error came from
+      Serial.println("error with temp sensor data detected in getTemp()");
+      return 0;  //  go to the start of the main loop
+    }
   }
 
   //  put the I2C temp sensors to sleep:
@@ -194,6 +210,7 @@ void getTemp() {
   Serial.print(inTemp);  //  print a message over serial (USB)
   Serial.print(" | out temp: ");  //  print a message over serial (USB)
   Serial.println(outTemp);  //  print a message over serial (USB)
+  return 1;
 }
 
 //  the function to set the value of the lights (turn the lights on or off)
@@ -237,8 +254,8 @@ void lightChange() {
 
 //  the functoin called when a manual cooldown is triggered (the cooldown button is released):
 void manualCooldown() {
+  Serial.println("manualCooldown() called");  //  print a message over serial (USB)
   mode = 2;  //  set the mode to cooldown
-  Serial.println("manual cooldown trigered");  //  print a message over serial (USB)
 }
 
 //  the function called when the door opens (the door switch is released):
@@ -253,6 +270,31 @@ void doorOpening() {
 void doorClosing() {
   doorOpen = false;  //  remember that the door is closed
   Serial.println("door closed");  //  print a message over serial (USB)
+}
+
+//  checks if the buttons have been pressed or relesed, and calls the correct functions based on the state of the buttons
+void checkButtons() {
+  door_switch.update();
+  light_switch.update();
+  coolDown_switch.update();
+
+  if (door_switch.pressed()) {
+    doorClosing();
+  }
+
+  if (door_switch.released()) {
+    doorOpening();
+  }
+
+  if (light_switch.released()) {
+    Serial.println("light switch pressed");  //  print a message over serial (USB)
+    lightChange();  //  Change the light state
+  }
+
+  if (coolDown_switch.released() && coolDown_switch.previousDuration() >= cooldownSwitchHoldTime) {  //  if the cooldown switch was just relesed and was previusly held for over a set length of time:
+    Serial.println("cooldown switch pressed");  //  print a message over serial (USB)
+    manualCooldown();  //  set mode to cooldown
+  }
 }
 
 #endif

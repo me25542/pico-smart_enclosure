@@ -44,6 +44,8 @@ void standby() {
 
   printingLastLoop = false;  //  remember that last loop wasn't in printing mode
 
+  delay(10);  //  wait for 10ms
+
   Serial.println("Did standby()");  //  print a message over serial (USB)
 }
 
@@ -143,6 +145,24 @@ void error() {
   switch (errorOrigin) {  //  check the origin of the error
     case 1:  //  if the origin is 1:
       Serial.print("Origin: Temp sensor check.");  //  print a message over serial (USB)
+      Serial.print(" Sensor values:");  //  print a message over serial (USB)
+      Serial.print("Heater sensor: ");  //  print a message over serial (USB)
+      for (int i = 0; i < sensorReads; i++) {  //  loop this code as many times as there are temperature readings:
+        Serial.print(heaterTemps[i]);  //  print a message over serial (USB)
+        Serial.print(" | ");  //  print a message over serial (USB)
+      }
+
+      Serial.print("In sensor: ");  //  print a message over serial (USB)
+      for (int i = 0; i < sensorReads; i++) {  //  loop this code as many times as there are temperature readings:
+        Serial.print(inTemps[i]);  //  print a message over serial (USB)
+        Serial.print(" | ");  //  print a message over serial (USB)
+      }
+
+      Serial.print("Out sensor: ");  //  print a message over serial (USB)
+      for (int i = 0; i < sensorReads; i++) {  //  loop this code as many times as there are temperature readings:
+        Serial.print(outTemps[i]);  //  print a message over serial (USB)
+        Serial.print(" | ");  //  print a message over serial (USB)
+      }
       break;  //  exit the switch... case statement
 
     case 2:  //  if the origin is 2:

@@ -73,9 +73,10 @@ const int fanOnVal = 255;  //  the pwm value used when the fan should be all the
 const int defaultMaxFanSpeed = 255;  //  the default maxumum fan speed (what will be used if nothing else is specified)
 const int fanKickstartTime = 500; //  the time (in miliseconds) that the fan will be turned on at 100% before being set to its target value
 const int bigDiff = 3;  //  the value used to define a large temp difference (in deg. c.)
-const int cooldownDif = 6;  //  if the inside and outside temps are within this value of eachother, cooldown() will go to standby()
+const int cooldownDif = 5;  //  if the inside and outside temps are within this value of eachother, cooldown() will go to standby()
 const int dimingTime = 2;  //  this * 255 = the time (in miliseconds) that togling the lights will take
 const int i2cTempSensorRes = 1;  //  0 = 0.5, 1 = 0.25, 2 = 0.125, 3 = 0.625  (higher res takes longer to read)
+const int sensorReads = 3;  //  the number of times the temp sensors will be read each time the temp is goten (the values will be averaged)
 const int maxSerialStartupTries = 100;  //  this is the number of tries (or the number of 10ms periods) that will be taken to connect to usb before giving up
 const int maxCoreOneShutdownTime = 2500;  //  the maximum time (in miliseconds) that the the second core (core1) can take to acknowledge an error andshut down
 const int servo1Open = 180;  //  the "open" position for servo 1
@@ -83,9 +84,10 @@ const int servo2Open = 180;  //  the "open" position for servo 2
 const int servo1Closed = 0;  //  the "closed" position for servo 1
 const int servo2Closed = 0;  //  the "closed" position for servo 2
 
-const long serialSpeed = 250000;  //  the buad rate that will be used for serial communication
-
+const unsigned long serialSpeed = 250000;  //  the buad rate that will be used for serial communication
+const unsigned long serialTimout = 100;  //  the serial timout time, in miliseconds
 const unsigned long debounceTime = 25000;  //  this is the debounce delay, in microseconds (1μs = 1s/1,000,000)
+const unsigned long cooldownSwitchHoldTime = 5000;  //  this is the time, in miliseconds, that the cooldown switch needs to be pressed to trigger a cooldown
 
   //  hardware (depends on how you wired everything)
 const int heaterTempSensorAdress = 0x18;  //  this is the I2C adress for the heater temp sensor
@@ -93,10 +95,6 @@ const int inTempSensorAdress = 0x19;  //  this is the I2C adress for the in temp
 const int outTempSensorAdress = 0x1A;  //  this is the I2C adress for the out temp sensor
 
   //  default values for dynamic variables
-
-//const float testThermalRunawayTemps[] = {-3, 0, 1, 2.5, 4, 5.5, 7, 8.5};  //  the temp diference between unheated and heated air at some checkpoints
-//const unsigned long testThermalRunawayTimes[] = {0, 10000, 20000, 40000, 60000, 80000, 100000, 120000};  //  the times that the above temps will be checked at
-
 volatile int mode = 1;  //  tracks the enclosures operating mode (0 = error, 1 = standby, 2 = cooldown, 3 = printing)
 volatile int globalSetTemp = 10;  //  tracks what temperature the enclosure should be at
 volatile int maxFanSpeed = defaultMaxFanSpeed;  //  tracks the maximum fan speed alowable
@@ -119,6 +117,10 @@ int oldS2_Pos;  //  tracks the old position of servo 2
 
 bool printingLastLoop = false;  //  tracks, basically, if the last loop went to printing() or not. used to avoid falsely seting heatingMode
 bool heatingMode = false;  //  tracks if the enclosure is in heating or cooling mode (false = cooling, true = heating)
+
+float heaterTemps[sensorReads];  //  stores all mesured values from the heater temp sensor each time the temp is read (not just an average), used for error checking
+float inTemps[sensorReads];  //  stores all mesured values from the in temp sensor each time the temp is read (not just an average), used for error checking
+float outTemps[sensorReads];  //  stores all mesured values from the out temp sensor each time the temp is read (not just an average), used for error checking
 
 float heaterTemp = 20;  //  tracks the heater temp
 float inTemp = 20;  //  tracks the temp inside the enclosure
@@ -151,6 +153,7 @@ void setup() {
   #include "servosSetup.h"  //  setup the servos, move them to home position
   
   for (int serialStartupTries = 0; serialStartupTries < maxSerialStartupTries && !startSerial(); ++ serialStartupTries);  //  start serial (USB) comunication (and wait for up to one second for a computer to be connected)
+  Serial.setTimeout(serialTimout);  //  set the serial timout time
 
   //  print a message over serial (USB)
   Serial.println("Startup sucessful");
@@ -217,23 +220,7 @@ void loop1() {
     serialReceiveEvent();  //  check for any commands sent via USB
 
     //  update the state of the switches
-    door_switch.update();
-    light_switch.update();
-    coolDown_switch.update();
-
-    if (door_switch.pressed()) {
-      doorClosing();
-    }
-    if (door_switch.released()) {
-      doorOpening();
-    }
-    if (light_switch.released()) {
-      Serial.println("light switch pressed");  //  print a message over serial (USB)
-      lightChange();  //  Change the light state
-    }
-    if (coolDown_switch.released()) {
-      manualCooldown();
-    }
+    checkButtons();
 
     setPrintDoneLight(printDone); //  set the print done light to the correct state
     setLights(lightSetState); //  set the lights to the correct state
