@@ -80,3 +80,9 @@ M260 B4 ; set print done
 M260 S ; send the current buffer
 
 ; end of my custom stuff
+
+### See also:
+
+[RepRap - M260](https://reprap.org/wiki/G-code#M260:_i2c_Send_Data)
+
+[Macros | Prusa knowledge base](https://help.prusa3d.com/article/macros_1775)
