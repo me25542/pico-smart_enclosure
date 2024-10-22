@@ -65,7 +65,7 @@ M260 S ; send the current buffer
 
 ### End gcode
 
-(add at the *verry* end of your printer's nd gcode)
+(add at the *verry* end of your printer's end gcode)
 
 ```
 ; start of my custom stuff:
