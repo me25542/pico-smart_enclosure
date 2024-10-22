@@ -1,10 +1,9 @@
 ## example custom gcode:
 
-(compatible with any slic3r-based slicer)
+(compatible with any PrusaSlicer-based slicer)
 - Prusa Slicer
 - Bambu Studio
 - Orca Slicer
-- Slic3r
 - Super Slicer
 
 This start gcode is based off of commands compatible with v1.1.0
@@ -15,6 +14,7 @@ It should be compatible with any v1.x version later than this
 
 (add at the *verry* start of your printer's start gcode)
 
+```
 ; start of my custom stuff:
 
 M260 A8 ; set adress to 8
@@ -60,13 +60,14 @@ M260 B100 ; set max enclosure fan speed to 0%
 M260 S ; send the current buffer
 
 ; end of my custon stuff
-
+```
 
 
 ### End gcode
 
 (add at the *verry* end of your printer's nd gcode)
 
+```
 ; start of my custom stuff:
 
 M260 A8 ; set adress to 8
@@ -80,6 +81,7 @@ M260 B4 ; set print done
 M260 S ; send the current buffer
 
 ; end of my custom stuff
+```
 
 ### See also:
 
