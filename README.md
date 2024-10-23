@@ -34,18 +34,24 @@ Uses a raspberry Pi Pico connected to the printer via I2C to provide **automatic
 
 
 ## To use
-- Install [this](https://github.com/earlephilhower/arduino-pico) board in Arduino IDE
-    - Open Arduino IDE
-    - Go to file - preferences (or press CTRL+Comma)
-    - In the "Additional boards manager URLs" field paste the above URL (https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json)
-    - Hit "OK" to close the dialog
-    - Search something like "pico" in the boards manager, and install "Raspberry Pi Pico/RP2040/RP2035"
-- Install all dependencies (see below)
-- Download the files in "Printer_enclosure_firmware" and open them in Arduino IDE
-- Change any values as needed, depending on your setup
-- Double check your wiring (couldn't hurt, for what mine looks like see the wiring diagram below)
-- Upload the code to your Pico
-- Enjoy!
+- **If you don't need to change anything in the code (if your hardware is the same as mine):**
+	- Double check your wiring (couldn't hurt, for what mine looks like see the wiring diagram below)
+	- Plug the Raspberry Pi Pico into your computer while holding down the BOOTSEL button, copy the latest .uf2 file to the pico
+	- Enjoy!
+- **If you want to customize things in the code:**
+	- I recommend Using Arduino IDE, as that is what I used and I know it works
+	- Install [this](https://github.com/earlephilhower/arduino-pico) board in Arduino IDE
+	    - Open Arduino IDE
+	    - Go to file - preferences (or press CTRL+Comma)
+	    - In the "Additional boards manager URLs" field paste the above URL (`https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json`)
+	    - Hit "OK" to close the dialog
+	    - Search something like "pico" in the boards manager, and install "Raspberry Pi Pico/RP2040/RP2035"
+	- Install all dependencies (see below)
+	- Download the files in "Printer_enclosure_firmware" and open them in Arduino IDE
+	- Change any values as needed, depending on your setup
+	- Double check your wiring (couldn't hurt, for what mine looks like see the wiring diagram below)
+	- Upload the code to your Pico
+	- Enjoy!
 
 **This program has several dependencies you will need to install:**
   - [Adafruit MCP9808](https://github.com/adafruit/Adafruit_MCP9808_Library)
@@ -80,9 +86,14 @@ Uses a raspberry Pi Pico connected to the printer via I2C to provide **automatic
 - Probably some other little things that I forgot. Use common sense.
 
 ## Compatibility
-This design is compatible with any printer that supports M260 gcode commands and has an I2C bus that you can connect to.
+**This design is compatible with any printer that supports [M260](https://reprap.org/wiki/G-code#M260:_i2c_Send_Data) gcode commands and has an I2C bus that you can connect to.**
 
 The only printers that I am *certain* will work with this are the Original Prusa MK4-series printers (I made this for my MK4), as their Xbuddy board has an I2C connector that is unused. (a female 4-pin Molex Click-Mate if you want to buy a cable to fit)
+
+**Known compatible printers:**
+- Prusa MK4(s)
+- Prusa MK3.9(s)
+- Prusa MK3.5(s)
 
 However, many other printers *might* have I2C connectors, so it's worth checking yours. If you find other printers that are compatible, please let me know!
 
