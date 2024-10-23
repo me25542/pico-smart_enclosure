@@ -36,7 +36,7 @@ Uses a raspberry Pi Pico connected to the printer via I2C to provide **automatic
 ## To use
 - **If you don't need to change anything in the code (if your hardware is the same as mine):**
 	- Double check your wiring (couldn't hurt, for what mine looks like see the wiring diagram below)
-	- Plug the Raspberry Pi Pico into your computer while holding down the BOOTSEL button, copy the latest .uf2 file to the pico
+	- Plug the Raspberry Pi Pico into your computer while holding down the BOOTSEL button, copy [the latest .uf2 file](https://github.com/me25542/pico-smart_enclosure/releases) to the pico
 	- Enjoy!
 - **If you want to customize things in the code:**
 	- I recommend Using Arduino IDE, as that is what I used and I know it works
