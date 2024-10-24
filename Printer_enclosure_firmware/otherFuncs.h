@@ -25,9 +25,12 @@
 
 //  a simple function to blink the built-in LED
 void blinkLED(unsigned long blinkTime) {
+  #ifdef debug
   Serial.print("blinkLED(");  //  print a message over serial (USB)
   Serial.print(blinkTime);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
+  #endif
+
   digitalWrite(ledPin, HIGH);  //  turn on the built-in LED
   delay(blinkTime);  //  wait 1 second
   digitalWrite(ledPin, LOW);  //  turn off the built-in LED
@@ -35,6 +38,16 @@ void blinkLED(unsigned long blinkTime) {
 
 //  a function to smoothly turn on or off a pin using PWM
 void smoothChange(byte pin, bool setState, int time) {
+  #ifdef debug
+  Serial.print("smoothChange(");  //  print a message over serial (USB)
+  Serial.print(pin);  //  print a message over serial (USB)
+  Serial.print(",");  //  print a message over serial (USB)
+  Serial.print(setState);  //  print a message over serial (USB)
+  Serial.print(",");  //  print a message over serial (USB)
+  Serial.print(time);  //  print a message over serial (USB)
+  Serial.println(") called");  //  print a message over serial (USB)
+  #endif
+
   if (setState) {  //  if we want to turn the pin on:
     for (byte i = 0; i < 255; i++) {  //  while "i" (which starts at 0) is less than 255, run the enclosed code and add one to "i"
       analogWrite(pin, i);  //  write the value contained in i to the pin
@@ -52,19 +65,28 @@ void smoothChange(byte pin, bool setState, int time) {
 
 //  the function that checks if a given I2C device is connected
 bool isI2CDeviceConnected(byte address) {
+  #ifdef debug
   Serial.print("isI2CDeiceConnected(");  //  print a message over serial (USB)
   Serial.print(address);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
+  #endif
+
   Wire.beginTransmission(address);  //  starts a transmition to the specified device
   int I2CError = Wire.endTransmission(true);  //  record the response from ending the transmition and releasing the bus
+  #ifdef debug
   Serial.print("isI2CDeviceConnected returned ");
   Serial.println(I2CError == 0);
+  #endif
+
   return (I2CError == 0);  //  this will make the function return true if there were no errors, false otherwise
 }
 
 //  the function that checks if all sensors are connected
 bool areSensorsPresent() {
+  #ifdef debug
   Serial.println("areSensorsPreasent() called");  //  print a message over serial (USB)
+  #endif
+
   bool sensorNotConnected = false;
   if (! isI2CDeviceConnected(heaterTempSensorAdress)) {
     mode = 0;  //  set the mode to error
@@ -84,17 +106,24 @@ bool areSensorsPresent() {
     errorInfo = 3;  //  record which sensor is at fault
     sensorNotConnected = true;
   }
+
+  #ifdef debug
   Serial.print("areSensorsPreasent() returned ");
   Serial.println(! sensorNotConnected);
+  #endif
+
   return ! sensorNotConnected;
 }
 
 
 //  the function to set the state of the PSU (on or off) | returns true on sucess, false on failure
 bool setPSU(bool state) {
+  #ifdef debug
   Serial.print("setPSU(");  //  print a message over serial (USB)
   Serial.print(state);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
+  #endif
+
   digitalWrite(psPin, state);  //  set the power state of the PSU
 
   if (state) {  //  if we are turning the PSU on
@@ -120,11 +149,14 @@ bool setPSU(bool state) {
 
 //  the function to set the position of the servos
 void setServos(int s1_Pos, int s2_Pos) {
+  #ifdef debug
   Serial.print("setServos(");  //  print a message over serial (USB)
   Serial.print(s1_Pos);  //  print a message over serial (USB)
   Serial.print(", ");  //  print a message over serial (USB)
   Serial.print(s2_Pos);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
+  #endif
+
   servo1.write(s1_Pos);  //  set the position of servo1
   servo2.write(s2_Pos);  //  set the position of servo2
   if ((s1_Pos != oldS1_Pos) || (s2_Pos != oldS2_Pos)) {  //  if the servos are actually being set to something they wern't before:
@@ -136,6 +168,7 @@ void setServos(int s1_Pos, int s2_Pos) {
 
 //  the function to set the state of booth heaters, and the fan (the temp-related stuff)
 void setHeaters(bool h1_On, bool h2_On, byte fanVal) {
+  #ifdef debug
   Serial.print("setHeaters(");  //  print a message over serial (USB)
   Serial.print(h1_On);  //  print a message over serial (USB)
   Serial.print(", ");  //  print a message over serial (USB)
@@ -143,14 +176,20 @@ void setHeaters(bool h1_On, bool h2_On, byte fanVal) {
   Serial.print(", ");  //  print a message over serial (USB)
   Serial.print(fanVal);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
+  #endif
 
   if (doorOpen) {
+    #ifdef debug
     Serial.println("setHeaters() will turn everything off; the door is open");  //  print a message over serial (USB)
+    #endif
+
     h1_On = false;
     h2_On = false;
     fanVal = 0;
   } else {
+    #ifdef debug
     Serial.println("setHeaters() will do as requested; the door is closed");  //  print a message over serial (USB)
+    #endif
   }
 
   digitalWrite(heater1Pin, ! h1_On);  //  set the value of heater1
@@ -169,6 +208,7 @@ void setHeaters(bool h1_On, bool h2_On, byte fanVal) {
 
 //  the function to set the state of the mode indicator lights
 void setIndicatorLights(bool errorLight_On, bool printingLight_On, bool cooldownLight_On, bool standbyLight_On) {
+  #ifdef debug
   Serial.print("setIndicatorLights(");  //  print a message over serial (USB)
   Serial.print(errorLight_On);  //  print a message over serial (USB)
   Serial.print(", ");  //  print a message over serial (USB)
@@ -178,6 +218,13 @@ void setIndicatorLights(bool errorLight_On, bool printingLight_On, bool cooldown
   Serial.print(", ");  //  print a message over serial (USB)
   Serial.print(standbyLight_On);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
+  #endif
+
+  //  these will only be created the first time this function is called
+  static bool el_State = false;  //  tracks the state of the error light
+  static bool pl_State = false;  //  tracks the state of the printing light
+  static bool cl_State = false;  //  tracks the state of the cooldown light
+  static bool sl_State = false;  //  tracks the state of the standby light
 
   if (el_State != errorLight_On) {  //  if we will be changing the light's value:
     smoothChange(errorLightPin, errorLight_On, il_DimingTime);  //  smoothly change the light to it's new value
@@ -201,9 +248,14 @@ void setIndicatorLights(bool errorLight_On, bool printingLight_On, bool cooldown
 
 //  the function to set the print done light
 void setPrintDoneLight(bool pdl_State) {
+  #ifdef debug
   Serial.print("setPrintDoneLight(");  //  print a message over serial (USB)
   Serial.print(pdl_State);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
+  #endif
+
+  //  this will only be created the first time this function is called:
+  static bool printDoneLight_On = false;  //  tracks the state of the print done light
 
   if (printDoneLight_On != pdl_State) {  //  if we are actually going to change the state of the print done light:
     smoothChange(printDoneLightPin, pdl_State, pdl_DimingTime);  //  smoothly change the state of the print done light
@@ -219,7 +271,9 @@ bool startSerial() {
 
 // the function that gets all temp sensor data | returns 0 on failure, 1 on sucess
 bool getTemp() {
+  #ifdef debug
   Serial.print("getTemp() called");  //  print a message over serial (USB)
+  #endif
 
   //  wake up I2C temp sensors:
   heaterTempSensor.wake();
@@ -250,7 +304,7 @@ bool getTemp() {
       mode = 0;  //  set mode to error
       errorOrigin = 1;  //  record where the error came from
       Serial.println("error with temp sensor data detected in getTemp()");
-      return 0;  //  go to the start of the main loop
+      return false;  //  go to the start of the main loop
     }
   }
 
@@ -259,20 +313,26 @@ bool getTemp() {
   inTempSensor.shutdown_wake(1);
   outTempSensor.shutdown_wake(1);
 
+  #ifdef debug
   Serial.print("heater temp: ");  //  print a message over serial (USB)
   Serial.print(heaterTemp);  //  print a message over serial (USB)
   Serial.print(" | in temp: ");  //  print a message over serial (USB)
   Serial.print(inTemp);  //  print a message over serial (USB)
   Serial.print(" | out temp: ");  //  print a message over serial (USB)
   Serial.println(outTemp);  //  print a message over serial (USB)
-  return 1;
+  #endif
+
+  return true;
 }
 
 //  the function to set the value of the lights (turn the lights on or off)
 void setLights(bool on) {
+  #ifdef debug
   Serial.print("setLights(");  //  print a message over serial (USB)
   Serial.print(on);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
+  #endif
+
   if (lightState != on) {  //  check if the state of the lights matches their target state. in this case, "on" is a variable of the type "bool"
     dontTurnOffThePSU = true;  //  make shure there will be power through the whole diming / brightening process
 
@@ -283,22 +343,28 @@ void setLights(bool on) {
     smoothChange(lightsPin, on, dimingTime);  //  smoothly change the value of the lights pin to what it should be
 
     lightState = on;  //  remember the state of the lights
+    dontTurnOffThePSU = false;  //  let the other core turn off the PSU again
   }
   
-  dontTurnOffThePSU = false;  //  let the other core turn off the PSU again
   lightSetState = lightState;  //  make shure the target state of the lights is updated if the light switch was pressed or the printer requested a change
 }
 
 //  a function to change the lights value (turn them off if on and vice versa). called on light switch relese
 void lightChange() {
+  #ifdef debug
   Serial.println("lightChange() called");  //  print a message over serial (USB)
+  #endif
+
   setLights(! lightState);  //  print a message over serial (USB)
   changeLights = false;  //  disable the flag to change the light's state
 }
 
 //  the functoin called when a manual cooldown is triggered (the cooldown button is released):
 void manualCooldown() {
+  #ifdef debug
   Serial.println("manualCooldown() called");  //  print a message over serial (USB)
+  #endif
+
   mode = 2;  //  set the mode to cooldown
 }
 
@@ -307,13 +373,19 @@ void doorOpening() {
   doorOpen = true;  //  remember the door is open
   printDone = false;  //  the print might have been removed; remember that the print is not done
   setHeaters(false, false, 0);  //  turn off both heaters and the fan
+
+  #ifdef debug
   Serial.println("door open");  //  print a message over serial (USB)
+  #endif
 }
 
 //  the function called when the door closes (the door switch is pressed):
 void doorClosing() {
   doorOpen = false;  //  remember that the door is closed
+
+  #ifdef debug
   Serial.println("door closed");  //  print a message over serial (USB)
+  #endif
 }
 
 //  checks if the buttons have been pressed or relesed, and calls the correct functions based on the state of the buttons
@@ -331,12 +403,18 @@ void checkButtons() {
   }
 
   if (light_switch.released()) {
+    #ifdef debug
     Serial.println("light switch pressed");  //  print a message over serial (USB)
+    #endif
+
     lightChange();  //  Change the light state
   }
 
   if (coolDown_switch.isPressed() && coolDown_switch.currentDuration() >= cooldownSwitchHoldTime) {  //  if the cooldown switch was just relesed and was previusly held for over a set length of time:
+    #ifdef debug
     Serial.println("cooldown switch pressed");  //  print a message over serial (USB)
+    #endif
+
     manualCooldown();  //  set mode to cooldown
   }
 }

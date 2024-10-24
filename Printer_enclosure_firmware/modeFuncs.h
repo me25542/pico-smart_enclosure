@@ -27,7 +27,9 @@
 
 // the function called every loop when the mode is standby:
 void standby() {
+  #ifdef debug
   Serial.println("Doing standby()...");  //  print a message over serial (USB)
+  #endif
 
   //  set the lights:
   setIndicatorLights(false, false, false, true);  //  turn on the "standby" light, turn off the others
@@ -46,12 +48,16 @@ void standby() {
 
   delay(10);  //  wait for 10ms
 
+  #ifdef debug
   Serial.println("Did standby()");  //  print a message over serial (USB)
+  #endif
 }
 
 //  the function called every loop when the mode is cooldown:
 void cooldown() {
+  #ifdef debug
   Serial.println("Doing cooldown()...");  //  print a message over serial (USB)
+  #endif
 
   //  set the lights:
   setIndicatorLights(false, false, true, false);  //  turn on the "cooldown" light, turn off the others
@@ -74,12 +80,16 @@ void cooldown() {
 
   printingLastLoop = false;  //  remember that last loop wasn't in printing mode
 
+  #ifdef debug
   Serial.println("Did cooldown()");  //  print a message over serial (USB)
+  #endif
 }
 
 //  the function called every loop when the mode is printing:
 void printing() {
+  #ifdef debug
   Serial.println("Doing printing()...");  //  print a message over serial (USB)
+  #endif
 
   //  get temps:
   getTemp();
@@ -131,7 +141,9 @@ void printing() {
 
   printingLastLoop = true;  //  remember that last loop was in printing mode
 
+  #ifdef debug
   Serial.println("Did printing()");  //  print a message over serial (USB)
+  #endif
 }
 
 //  the function called if an error is detected:

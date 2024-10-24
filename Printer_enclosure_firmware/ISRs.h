@@ -86,7 +86,9 @@ void receiveEvent(int howMany) {
 }
 
 void serialReceiveEvent() {
+  #ifdef debug
   Serial.println("serialRecieveEvent() called");  //  print a message over serial (USB)
+  #endif
   if (Serial.available()) {  //  if there are received bytes in the buffer:
     byte serialRecVal = byte(Serial.parseInt());  // set serialRecVal ("it") to the first valid set of characters in the buffer, converted from a string of ASCII chars to an int
     Serial.print("byte recieved: ");  //  print a message over serial (USB)

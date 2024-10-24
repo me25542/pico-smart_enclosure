@@ -20,6 +20,8 @@
  * SOFTWARE.
 */
 
+#define debug  //  this is a flag to print debuging info like, all the time. comment out when everything is working
+
 //  include the necissary libraries:
 #include <Wire.h>  //  Include the library for I2C comunication
 #include <Adafruit_MCP9808.h>  //  Include the library for using the temp sensors
@@ -119,11 +121,6 @@ volatile bool lightState = false;  //  tracks the status of the lights
 
 bool printingLastLoop = false;  //  tracks, basically, if the last loop went to printing() or not. used to avoid falsely seting heatingMode
 bool heatingMode = false;  //  tracks if the enclosure is in heating or cooling mode (false = cooling, true = heating)
-bool printDoneLight_On = false;  //  tracks the state of the print done light
-bool el_State = false;  //  tracks the state of the error light
-bool pl_State = false;  //  tracks the state of the printing light
-bool cl_State = false;  //  tracks the state of the cooldown light
-bool sl_State = false;  //  tracks the state of the standby light
 
 int oldS1_Pos;  //  tracks the old position of servo 1
 int oldS2_Pos;  //  tracks the old position of servo 2
@@ -192,7 +189,9 @@ void setup1() {
 
 //  the loop code for core 1
 void loop() {
+  #ifdef debug
   Serial.println("loop");  //  print a message over serial (USB)
+  #endif
 
   areSensorsPresent();  //  check if any sensors were disconnected (we don't want to do this with the other core because of potentiall interferance with reading the sensors)
 
