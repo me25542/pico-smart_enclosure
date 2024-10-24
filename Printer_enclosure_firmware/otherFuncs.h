@@ -33,8 +33,25 @@ void blinkLED(unsigned long blinkTime) {
   digitalWrite(ledPin, LOW);  //  turn off the built-in LED
 }
 
+//  a function to smoothly turn on or off a pin using PWM
+void smoothChange(byte pin, bool setState, int time) {
+  if (setState) {  //  if we want to turn the pin on:
+    for (byte i = 0; i < 255; i++) {  //  while "i" (which starts at 0) is less than 255, run the enclosed code and add one to "i"
+      analogWrite(pin, i);  //  write the value contained in i to the pin
+      delay(time);  //  wait for the set amount of time
+    }
+
+  } else {  //  if we want to turn the pin off:
+    for (byte i = 255; i > 0; i--) {  //  while "i" (which starts at 255) is greater than 0, rin the enclosed code and subtract one from "i"
+      analogWrite(pin, i);  //  write the value contained in i to the pin
+      delay(time);  //  wait for the set amount of time
+    }
+  }
+  digitalWrite(pin, setState);
+}
+
 //  the function that checks if a given I2C device is connected
-bool isI2CDeviceConnected(int address) {
+bool isI2CDeviceConnected(byte address) {
   Serial.print("isI2CDeiceConnected(");  //  print a message over serial (USB)
   Serial.print(address);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
@@ -73,13 +90,32 @@ bool areSensorsPresent() {
 }
 
 
-//  the function to set the state of the PSU (on or off)
-void setPSU(bool state) {
+//  the function to set the state of the PSU (on or off) | returns true on sucess, false on failure
+bool setPSU(bool state) {
   Serial.print("setPSU(");  //  print a message over serial (USB)
   Serial.print(state);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
   digitalWrite(psPin, state);  //  set the power state of the PSU
-  while (digitalRead(pokPin) != state);  //  wait for the PSU to report the power state is the same as requested
+
+  if (state) {  //  if we are turning the PSU on
+    int i;
+    for (i = 0; ((digitalRead(pokPin) != state) && (i < maxPSUOnTime)); i++) {  //  wait for the PSU to report the power state is the same as requested
+      delay(1);  //  wait for one milisecond
+    }
+
+    if (i < maxPSUOnTime) {
+      return true;
+
+    } else {
+      mode = 0;  //  set mode to error
+      errorOrigin = 9;  //  record what caused the error
+      errorInfo = state;  //  record some info about the error
+      return false;
+    }
+
+  } else {
+    return true;
+  }
 }
 
 //  the function to set the position of the servos
@@ -99,7 +135,7 @@ void setServos(int s1_Pos, int s2_Pos) {
 }
 
 //  the function to set the state of booth heaters, and the fan (the temp-related stuff)
-void setHeaters(bool h1_On, bool h2_On, int fanVal) {
+void setHeaters(bool h1_On, bool h2_On, byte fanVal) {
   Serial.print("setHeaters(");  //  print a message over serial (USB)
   Serial.print(h1_On);  //  print a message over serial (USB)
   Serial.print(", ");  //  print a message over serial (USB)
@@ -142,10 +178,25 @@ void setIndicatorLights(bool errorLight_On, bool printingLight_On, bool cooldown
   Serial.print(", ");  //  print a message over serial (USB)
   Serial.print(standbyLight_On);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
-  digitalWrite(errorLightPin, errorLight_On);  //  set the error light
-  digitalWrite(printingLightPin, printingLight_On);  //  set the printing light
-  digitalWrite(cooldownLightPin, cooldownLight_On);  //  set the cooldown light
-  digitalWrite(standbyLightPin, standbyLight_On);  //  set the standby light
+
+  if (el_State != errorLight_On) {  //  if we will be changing the light's value:
+    smoothChange(errorLightPin, errorLight_On, il_DimingTime);  //  smoothly change the light to it's new value
+  }
+  if (pl_State != printingLight_On) {  //  if we will be changing the light's value:
+    smoothChange(printingLightPin, printingLight_On, il_DimingTime);  //  smoothly change the light to it's new value
+  }
+  if (cl_State != cooldownLight_On) {  //  if we will be changing the light's value:
+    smoothChange(cooldownLightPin, cooldownLight_On, il_DimingTime);  //  smoothly change the light to it's new value
+  }
+  if (sl_State != standbyLight_On) {  //  if we will be changing the light's value:
+    smoothChange(standbyLightPin, standbyLight_On, il_DimingTime);  //  smoothly change the light to it's new value
+  }
+
+  //  remember the state of the indicator lights:
+  el_State = errorLight_On;
+  pl_State = printingLight_On;
+  cl_State = cooldownLight_On;
+  sl_State = standbyLight_On;
 }
 
 //  the function to set the print done light
@@ -153,7 +204,11 @@ void setPrintDoneLight(bool pdl_State) {
   Serial.print("setPrintDoneLight(");  //  print a message over serial (USB)
   Serial.print(pdl_State);  //  print a message over serial (USB)
   Serial.println(") called");  //  print a message over serial (USB)
-  digitalWrite(printDoneLightPin, pdl_State);  //  set the state of the print done light
+
+  if (printDoneLight_On != pdl_State) {  //  if we are actually going to change the state of the print done light:
+    smoothChange(printDoneLightPin, pdl_State, pdl_DimingTime);  //  smoothly change the state of the print done light
+  }
+  printDoneLight_On = pdl_State;  //  remember the state of the print done light
 }
 
 //  the function that starts serial (USB) comunication (takes ~10ms) | returns 1 if a computer is connected, 0 if not
@@ -221,24 +276,13 @@ void setLights(bool on) {
   if (lightState != on) {  //  check if the state of the lights matches their target state. in this case, "on" is a variable of the type "bool"
     dontTurnOffThePSU = true;  //  make shure there will be power through the whole diming / brightening process
 
-    if (on) {
+    if (on) {  //  if we are turning on the lights:
       setPSU(true);  //  turn on the PSU
-
-      for (int lightVal = 0; lightVal < 255; lightVal++) {  //  while "lightVal" (which starts at 0) is less than 255, run the enclosed code and add one to "lightVal"
-        analogWrite(lightsPin, lightVal);  //  set the lights to a brightness cooldownLightOntrolled by "lightVal"
-        delay(dimingTime);  //  wait 2 miliseconds
-      }
-
-      lightState = true;  //  record that the lights are on
-
-    } else {
-      for (int lightVal = 255; lightVal > 0; lightVal--) {  //  while "lightVal" (which starts at 255) is greater than 0, run the enclosed code and subtract one from "lightVal"
-        analogWrite(lightsPin, lightVal);  //  set the lights to a brightness cooldownLightOntrolled by "lightVal"
-        delay(dimingTime);  //  wait 2 miliseconds
-      }
-
-      lightState = false;  //  record that the lights are off
     }
+
+    smoothChange(lightsPin, on, dimingTime);  //  smoothly change the value of the lights pin to what it should be
+
+    lightState = on;  //  remember the state of the lights
   }
   
   dontTurnOffThePSU = false;  //  let the other core turn off the PSU again
@@ -291,7 +335,7 @@ void checkButtons() {
     lightChange();  //  Change the light state
   }
 
-  if (coolDown_switch.released() && coolDown_switch.previousDuration() >= cooldownSwitchHoldTime) {  //  if the cooldown switch was just relesed and was previusly held for over a set length of time:
+  if (coolDown_switch.isPressed() && coolDown_switch.currentDuration() >= cooldownSwitchHoldTime) {  //  if the cooldown switch was just relesed and was previusly held for over a set length of time:
     Serial.println("cooldown switch pressed");  //  print a message over serial (USB)
     manualCooldown();  //  set mode to cooldown
   }

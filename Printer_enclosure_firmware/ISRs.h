@@ -36,7 +36,7 @@ void requestEvent() {
 void receiveEvent(int howMany) {
   Serial.println("recieveEvent() called");  //  print a message over serial (USB)
   while (Wire1.available()) {  //  while there are received bytes in the buffer:
-    int recVal = Wire1.read();  // set recVal ("it") to the first byte in the buffer
+    byte recVal = Wire1.read();  // set recVal ("it") to the first byte in the buffer
     Serial.print("byte recieved: ");  //  print a message over serial (USB)
     Serial.println(recVal);  //  print a message over serial (USB)
 
@@ -75,7 +75,7 @@ void receiveEvent(int howMany) {
       globalSetTemp = recVal;  //  set the target temp
 
     } else if (recVal < 105) {  //  if it is 100-104:
-      maxFanSpeed = int(map(long(recVal), 100, 104, 0, 255));  //  set maxFanSpeed to a value from 0-255 based on the recieved value
+      maxFanSpeed = byte(map(long(recVal), 100, 104, 0, 255));  //  set maxFanSpeed to a value from 0-255 based on the recieved value
     
     } else {
       mode = 0;
@@ -88,7 +88,7 @@ void receiveEvent(int howMany) {
 void serialReceiveEvent() {
   Serial.println("serialRecieveEvent() called");  //  print a message over serial (USB)
   if (Serial.available()) {  //  if there are received bytes in the buffer:
-    int serialRecVal = int(Serial.parseInt());  // set serialRecVal ("it") to the first valid set of characters in the buffer, converted from a string of ASCII chars to an int
+    byte serialRecVal = byte(Serial.parseInt());  // set serialRecVal ("it") to the first valid set of characters in the buffer, converted from a string of ASCII chars to an int
     Serial.print("byte recieved: ");  //  print a message over serial (USB)
     Serial.println(serialRecVal);  //  print a message over serial (USB)
 
@@ -127,7 +127,7 @@ void serialReceiveEvent() {
       globalSetTemp = serialRecVal;  //  set the target temp
 
     } else if (serialRecVal < 105) {  //  if it is 100-104:
-      maxFanSpeed = int(map(long(serialRecVal), 100, 104, 0, 255));  //  set maxFanSpeed to a value from 0-255 based on the recieved value
+      maxFanSpeed = byte(map(long(serialRecVal), 100, 104, 0, 255));  //  set maxFanSpeed to a value from 0-255 based on the recieved value
     
     } else {
       mode = 0;

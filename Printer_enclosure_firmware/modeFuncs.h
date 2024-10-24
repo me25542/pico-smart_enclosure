@@ -193,6 +193,10 @@ void error() {
       Serial.print("Origin: invalid serial command.");  //  print a message over serial (USB)
       break;  //  exit the switch... case statement
 
+    case 9:
+      Serial.print("Origin: failure to start PSU in allocated time.");  //  print a message over serial (USB)
+      break;  //  exit the switch... case statement
+
     default:  //  if the origin is anything else:
       Serial.print("Unknown / invalid origin.");  //  print a message over serial (USB)
       Serial.print(" Listed origin: ");  //  print a message over serial (USB)

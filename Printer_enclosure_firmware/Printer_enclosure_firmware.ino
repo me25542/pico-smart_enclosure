@@ -28,57 +28,59 @@
 
 //  pins (how did you wire everything up?):
 
-const int ledPin = 25;  //  this is set in hardware; don't change
+const byte ledPin = 25;  //  this is set in hardware; don't change
   //  servo pins:
-const int servo2Pin = 20;  //  the pin connected to servo 1 | output
-const int servo1Pin = 19;  //  the pin connected to servo 2 | output
+const byte servo2Pin = 20;  //  the pin connected to servo 1 | output
+const byte servo1Pin = 19;  //  the pin connected to servo 2 | output
 
-const int pokPin = 18;  //  the pin connected to the PSUs P_OK pin | input
-const int printDoneLightPin = 17;  //  the pin connected to the print done light | output
+const byte pokPin = 18;  //  the pin connected to the PSUs P_OK pin | input
+const byte printDoneLightPin = 17;  //  the pin connected to the print done light | output
   //  mode indicator light pins:
-const int printingLightPin = 16;  //  the pin connected to the "printing" mode indicator light | output
-const int cooldownLightPin = 15;  //  the pin connected to the "cooldown" mode indicator light | output
-const int standbyLightPin = 14;  //  the pin connected to the "standby" mode indicator light | output
-const int errorLightPin = 13;  //  the pin connected to the "error" mode indicator light | output
+const byte printingLightPin = 16;  //  the pin connected to the "printing" mode indicator light | output
+const byte cooldownLightPin = 15;  //  the pin connected to the "cooldown" mode indicator light | output
+const byte standbyLightPin = 14;  //  the pin connected to the "standby" mode indicator light | output
+const byte errorLightPin = 13;  //  the pin connected to the "error" mode indicator light | output
   //  user input switch pins:
-const int coolDownSwitchPin = 12;  //  the pin connected to the "cooldown" switch / button | input
-const int lightSwitchPin = 11;  //  the pin connected to the "lights" switch / button | input
+const byte coolDownSwitchPin = 12;  //  the pin connected to the "cooldown" switch / button | input
+const byte lightSwitchPin = 11;  //  the pin connected to the "lights" switch / button | input
   //  heater pins:
-const int heater1Pin = 10;  //  the pin connected to heater 1 | output
-const int heater2Pin = 9;  //  the pin connected to heater 2 | output
+const byte heater1Pin = 10;  //  the pin connected to heater 1 | output
+const byte heater2Pin = 9;  //  the pin connected to heater 2 | output
   //  pin 8 is used to reset the pico ocasionally to avoid milis() overflow
-const int resetPin = 8;  //  EXPERIMENTAL | output
+const byte resetPin = 8;  //  EXPERIMENTAL | output
   
   //  pins 7 & 6 are used for I2C1
-const int I2C1_SCL = 7;  //  this is kind of set in hardware; be careful changing
-const int I2C1_SDA = 6;  //  this is kind of set in hardware; be careful changing
+const byte I2C1_SCL = 7;  //  this is kind of set in hardware; be careful changing
+const byte I2C1_SDA = 6;  //  this is kind of set in hardware; be careful changing
 
 //  pins 4 & 5 are used for I2C0
-const int I2C0_SDA = 4;  //  this is kind of set in hardware; be careful changing
-const int I2C0_SCL = 5;  //  this is kind of set in hardware; be careful changing
+const byte I2C0_SDA = 4;  //  this is kind of set in hardware; be careful changing
+const byte I2C0_SCL = 5;  //  this is kind of set in hardware; be careful changing
 
-const int doorSwitchPin = 3;  //  the pin connected to the door safety switch | input
-const int lightsPin = 2;  //  the pin connected to the enclosure lights | output
-const int psPin = 1;  //  the pin connected to the PSUs power on pin | output
-const int fanPin = 0;  //  the pin connected to the vent fan | output
+const byte doorSwitchPin = 3;  //  the pin connected to the door safety switch | input
+const byte lightsPin = 2;  //  the pin connected to the enclosure lights | output
+const byte psPin = 1;  //  the pin connected to the PSUs power on pin | output
+const byte fanPin = 0;  //  the pin connected to the vent fan | output
 
-//  define other things here:
-  //  preferences (how it will opperate)
+//  preferences (how it will opperate)
+const byte fanOffVal = 0;  //  the pwm value used when the fan should be off
+const byte fanMidVal = 127;  //  the pwm value used when the fan should be halfway on
+const byte fanOnVal = 255;  //  the pwm value used when the fan should be all the way on
+const byte defaultMaxFanSpeed = 255;  //  the default maxumum fan speed (what will be used if nothing else is specified)
 const int maxInOutTemp = 75;  //  the maximum temp the inside or outside of the enclosure can be before triggering an error
 const int maxHeaterTemp = 90;  //  the maximum temp the heater can reach before triggering an error
 const int minTemp = 0;  //  the minimum temp any of the sensors can read before triggering an error
-const int fanOffVal = 0;  //  the pwm value used when the fan should be off
-const int fanMidVal = 127;  //  the pwm value used when the fan should be halfway on
-const int fanOnVal = 255;  //  the pwm value used when the fan should be all the way on
-const int defaultMaxFanSpeed = 255;  //  the default maxumum fan speed (what will be used if nothing else is specified)
 const int fanKickstartTime = 500; //  the time (in miliseconds) that the fan will be turned on at 100% before being set to its target value
 const int bigDiff = 3;  //  the value used to define a large temp difference (in deg. c.)
 const int cooldownDif = 5;  //  if the inside and outside temps are within this value of eachother, cooldown() will go to standby()
 const int dimingTime = 2;  //  this * 255 = the time (in miliseconds) that togling the lights will take
+const int pdl_DimingTime = 1;  //  this * 255 = the time (in miliseconds) that changing the state of the print done light will take
+const int il_DimingTime = 1;  //  this * 255 = the time (in miliseconds) that changing the state of an indicator light will take
 const int i2cTempSensorRes = 1;  //  0 = 0.5, 1 = 0.25, 2 = 0.125, 3 = 0.625  (higher res takes longer to read)
 const int sensorReads = 3;  //  the number of times the temp sensors will be read each time the temp is goten (the values will be averaged)
 const int maxSerialStartupTries = 100;  //  this is the number of tries (or the number of 10ms periods) that will be taken to connect to usb before giving up
-const int maxCoreOneShutdownTime = 2500;  //  the maximum time (in miliseconds) that the the second core (core1) can take to acknowledge an error andshut down
+const int maxPSUOnTime = 5000;  //  the maximum time (in miliseconds) that the PSU can take to turn on before throwing an error
+const int maxCoreOneShutdownTime = 2500;  //  the maximum time (in miliseconds) that the first core will wait for the second core (core1) to acknowledge an error and shut down before proceeding anyways
 const int servo1Open = 180;  //  the "open" position for servo 1
 const int servo2Open = 180;  //  the "open" position for servo 2
 const int servo1Closed = 0;  //  the "closed" position for servo 1
@@ -87,36 +89,44 @@ const int servo2Closed = 0;  //  the "closed" position for servo 2
 const unsigned long serialSpeed = 250000;  //  the buad rate that will be used for serial communication
 const unsigned long serialTimout = 100;  //  the serial timout time, in miliseconds
 const unsigned long debounceTime = 25000;  //  this is the debounce delay, in microseconds (1μs = 1s/1,000,000)
-const unsigned long cooldownSwitchHoldTime = 5000;  //  this is the time, in miliseconds, that the cooldown switch needs to be pressed to trigger a cooldown
+const unsigned long cooldownSwitchHoldTime = 5000;  //  this is the time, in miliseconds, that the cooldown switch needs to be held to trigger a cooldown
 
-  //  hardware (depends on how you wired everything)
-const int heaterTempSensorAdress = 0x18;  //  this is the I2C adress for the heater temp sensor
-const int inTempSensorAdress = 0x19;  //  this is the I2C adress for the in temp sensor
-const int outTempSensorAdress = 0x1A;  //  this is the I2C adress for the out temp sensor
+//  hardware (depends on how you wired everything)
+const byte heaterTempSensorAdress = 0x18;  //  this is the I2C adress for the heater temp sensor
+const byte inTempSensorAdress = 0x19;  //  this is the I2C adress for the in temp sensor
+const byte outTempSensorAdress = 0x1A;  //  this is the I2C adress for the out temp sensor
 
-  //  default values for dynamic variables
-volatile int mode = 1;  //  tracks the enclosures operating mode (0 = error, 1 = standby, 2 = cooldown, 3 = printing)
-volatile int globalSetTemp = 10;  //  tracks what temperature the enclosure should be at
-volatile int maxFanSpeed = defaultMaxFanSpeed;  //  tracks the maximum fan speed alowable
-volatile int errorOrigin = 0;  /*  records where an error originated (usefull for diagnostics)
-(0 = N/A, 1 = Heater check failure, 2 = unrecognised mode, 3 = failure to start I2C temp sensors, 4 = printer commanded error, 5 = invalid printer command, 6 = sensors disconnected, 7 = serial commanded error, 8 = invalid serial command)*/
+//  default values for dynamic variables
+volatile byte mode = 1;  //  tracks the enclosures operating mode (0 = error, 1 = standby, 2 = cooldown, 3 = printing)
+volatile byte maxFanSpeed = defaultMaxFanSpeed;  //  tracks the maximum fan speed alowable
+volatile byte errorOrigin = 0;  /*  records where an error originated (usefull for diagnostics)
+(0 = N/A, 1 = Heater check failure, 2 = unrecognised mode, 3 = failure to start I2C temp sensors, 4 = printer commanded error, 5 = invalid printer command,
+6 = sensors disconnected, 7 = serial commanded error, 8 = invalid serial command, 9 = failure to start PSU in allocated time)*/
 volatile int errorInfo = 0;  //  records aditionall info about any posible errors
+volatile int globalSetTemp = 10;  //  tracks what temperature the enclosure should be at
 
 volatile bool errorDetected = false;  //  tracks if an error has been detected (used to instruct the second core (core1) to shut down)
 volatile bool coreZeroShutdown = false;  //  tracks if the first core (core0) has safed everything and entered an infinite loop (used only when an error is detected)
 volatile bool coreOneShutdown = false;  //  tracks if the second core (core1) has stoped doing stuff and entered an infinite loop (used only when an error is detected)
+volatile bool coreZeroStartup = false;  //  tracks if the first core (core0) has finished starting up
+volatile bool coreOneStartup = false;  //  tracks if the second core (core1) has finished starting up
 volatile bool printDone = false;  //  tracks if the print is done (used to turn on the print done light)
-volatile bool doorOpen = false;  //  tracks if the door is open
+volatile bool doorOpen = true;  //  tracks if the door is open
 volatile bool lightSetState = false;  //  tracks the state the lights should be in
 volatile bool changeLights = false;  //  tracks if the lights need to be changed (only used for printer-commanded changes)
 volatile bool dontTurnOffThePSU = false;  //  set to true during the changing of the lights state, to avoid the first core turning off the PSU at inconvinient times
 volatile bool lightState = false;  //  tracks the status of the lights
 
-int oldS1_Pos;  //  tracks the old position of servo 1
-int oldS2_Pos;  //  tracks the old position of servo 2
-
 bool printingLastLoop = false;  //  tracks, basically, if the last loop went to printing() or not. used to avoid falsely seting heatingMode
 bool heatingMode = false;  //  tracks if the enclosure is in heating or cooling mode (false = cooling, true = heating)
+bool printDoneLight_On = false;  //  tracks the state of the print done light
+bool el_State = false;  //  tracks the state of the error light
+bool pl_State = false;  //  tracks the state of the printing light
+bool cl_State = false;  //  tracks the state of the cooldown light
+bool sl_State = false;  //  tracks the state of the standby light
+
+int oldS1_Pos;  //  tracks the old position of servo 1
+int oldS2_Pos;  //  tracks the old position of servo 2
 
 float heaterTemps[sensorReads];  //  stores all mesured values from the heater temp sensor each time the temp is read (not just an average), used for error checking
 float inTemps[sensorReads];  //  stores all mesured values from the in temp sensor each time the temp is read (not just an average), used for error checking
@@ -146,7 +156,7 @@ Adafruit_MCP9808 inTempSensor = Adafruit_MCP9808();
 
 //  the setup code for core 1
 void setup() {
-  // put your setup code here, to run once:
+  setPSU(true);  //  turn on the PSU
 
   #include "pinDefs.h"  //  define all the pins; their modes, and their initial outputs
   #include "tempSensorsSetup.h" //  start the temp sensors and their I2C buss, then check if they work
@@ -155,8 +165,14 @@ void setup() {
   for (int serialStartupTries = 0; serialStartupTries < maxSerialStartupTries && !startSerial(); ++ serialStartupTries);  //  start serial (USB) comunication (and wait for up to one second for a computer to be connected)
   Serial.setTimeout(serialTimout);  //  set the serial timout time
 
+  while (! coreOneStartup) {  //  while the second core hasn't started up
+    delay(1);  //  wait for a tiny bit
+  }
+
   //  print a message over serial (USB)
   Serial.println("Startup sucessful");
+
+  coreZeroStartup = true;  //  tell the other core that we have finished starting up
 
   //  blink LED to show startup compleat:
   blinkLED(1000);
@@ -167,12 +183,15 @@ void setup1() {
   #include "buttonSetup.h"  //  set up the switches
   #include "printerI2cSetup.h"  //  start the I2C buss connected to the printer
 
+  coreOneStartup = true;
+
+  while (! coreZeroStartup) {  //  while the first core hasn't started up
+    delay(1);  //  wait for a tiny bit
+  }
 }
 
 //  the loop code for core 1
 void loop() {
-  // put your main code here, to run repeatedly:
-  
   Serial.println("loop");  //  print a message over serial (USB)
 
   areSensorsPresent();  //  check if any sensors were disconnected (we don't want to do this with the other core because of potentiall interferance with reading the sensors)
