@@ -226,16 +226,31 @@ void setIndicatorLights(bool errorLight_On, bool printingLight_On, bool cooldown
   static bool cl_State = false;  //  tracks the state of the cooldown light
   static bool sl_State = false;  //  tracks the state of the standby light
 
-  if (el_State != errorLight_On) {  //  if we will be changing the light's value:
+  //  turn off the lights being turned off:
+  if ((! errorLight_On) && (el_State != errorLight_On)) {  //  if we are turning the light off AND we will be changing its state:
     smoothChange(errorLightPin, errorLight_On, il_DimingTime);  //  smoothly change the light to it's new value
   }
-  if (pl_State != printingLight_On) {  //  if we will be changing the light's value:
+  if ((! printingLight_On) && (pl_State != printingLight_On)) {  //  if we are turning the light off AND we will be changing its state:
     smoothChange(printingLightPin, printingLight_On, il_DimingTime);  //  smoothly change the light to it's new value
   }
-  if (cl_State != cooldownLight_On) {  //  if we will be changing the light's value:
+  if ((! cooldownLight_On) && (cl_State != cooldownLight_On)) {  //  if we are turning the light off AND we will be changing its state:
     smoothChange(cooldownLightPin, cooldownLight_On, il_DimingTime);  //  smoothly change the light to it's new value
   }
-  if (sl_State != standbyLight_On) {  //  if we will be changing the light's value:
+  if ((! standbyLight_On) && (sl_State != standbyLight_On)) {  //  if we are turning the light off AND we will be changing its state:
+    smoothChange(standbyLightPin, standbyLight_On, il_DimingTime);  //  smoothly change the light to it's new value
+  }
+
+  //  turn on the lights being turned on:
+  if ((errorLight_On) && (el_State != errorLight_On)) {  //  if we are turning the light on AND we will be changing its state:
+    smoothChange(errorLightPin, errorLight_On, il_DimingTime);  //  smoothly change the light to it's new value
+  }
+  if ((printingLight_On) && (pl_State != printingLight_On)) {  //  if we are turning the light on AND we will be changing its state:
+    smoothChange(printingLightPin, printingLight_On, il_DimingTime);  //  smoothly change the light to it's new value
+  }
+  if ((cooldownLight_On) && (cl_State != cooldownLight_On)) {  //  if we are turning the light on AND we will be changing its state:
+    smoothChange(cooldownLightPin, cooldownLight_On, il_DimingTime);  //  smoothly change the light to it's new value
+  }
+  if ((standbyLight_On) && (sl_State != standbyLight_On)) {  //  if we are turning the light on AND we will be changing its state:
     smoothChange(standbyLightPin, standbyLight_On, il_DimingTime);  //  smoothly change the light to it's new value
   }
 
