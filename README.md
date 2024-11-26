@@ -2,17 +2,22 @@
 ### Automatic active temperature control and lighting for a 3d printer enclosure.
 Uses a raspberry Pi Pico connected to the printer via I2C to provide **automatic** active temperature control and full control of other enclosure functions via gcode (M260).
 
+### I am working on v2, this branch is a work in process intended to help me find bugs faster. Some documentation info may be outdated (I was to lazy to change it), and the code **will** have bugs.
+
 ## Features
 - **Automatic** active temperature control
 - **Direct** communication with the printer (via I2C)
-- **Smooth** PWM lighting control
+- **Smooth** PWM lighting control (currently broken in a few ways, should be fixed by the stable release)
+- **UI via OLed screen**
+  - You can control pretty much everything using the menu
+  - **Known issues**: The menu isn't verry responsive when in printing mode. Might get fixed (if I can workaround the root cause).
 - Fan kickstarting
 - PWM fan speed control
 - Printer-controllable max fan speed
 - Motorized fan flap control (optional)
 - Print done notification (light turns on)
 - Use of the standby capabilities on ATX PSUs to save power
-- Uses both cores in the pico for smoother real-time operation
+- Uses both cores in the Pico for smoother real-time operation
 - Highly customizable
 - Prints lots of debugging data over USB
 - Control via:
@@ -63,6 +68,8 @@ Uses a raspberry Pi Pico connected to the printer via I2C to provide **automatic
 ![image](https://github.com/user-attachments/assets/5ea24fb2-6b94-49b1-925b-52193d9423ab)
 
 ## BOM
+
+(needs updating)
 
 (In no particular order):
 - 1x 3d printer enclosure
@@ -128,6 +135,8 @@ Thank you for any and all contributions!
 
 ## Received I2C values, and what they do:
 
+(*should* stil work, but dosen't seem to. Outdated; v2 uses a beter primary encoding scheem)
+
 **Values 0-3 set the enclosure mode:**
 - 0 = error (shuts everything down and enters a safe state)
 - 1 = standby (doesn't really do anything, turns off the PSU to save power when the lights are off)
@@ -156,7 +165,7 @@ Thank you for any and all contributions!
 - 103 = max fan speed of 75%
 - 104 = max fan speed of 100%
 
-**Values 105-255 are reserved; as such they set the mode to error**
+**Values 105-255 are reserved; as such they set the mode to error** (No longer; disregard)
 
 ### Notes:
 
@@ -180,4 +189,4 @@ If the set temperature value is not specified at the start of a print, the last 
 
 If the max fan speed is not specified it will be set to 100%
 
-### WARNING: values 9 and 105-255 set the mode to error (as they are reserved for future use), putting the enclosure into safe mode
+### WARNING: values 9 and 105-255 set the mode to error (as they are reserved for future use), putting the enclosure into safe mode (No longer; disregard)
