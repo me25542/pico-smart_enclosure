@@ -23,7 +23,7 @@
 #ifndef ISRS_H
 #define ISRS_H
 
-//#define debug
+#define debug
 
 //  the function called on data requested:
 void requestEvent();

@@ -34,8 +34,7 @@ const void standby() {
   printf("Doing standby()\n");  //  print a debug message over the sellected debug port
   #endif
 
-  //  set the lights:
-  //setIndicatorLights(false, false, false, true);  //  turn on the "standby" light, turn off the others
+  getTemp();
 
   maxFanSpeed = defaultMaxFanSpeed;  //  reset the max fan speed
 

@@ -43,6 +43,7 @@ volatile uint8_t servo1Open = 180;  //  the "open" position for servo 1
 volatile uint8_t servo2Open = 180;  //  the "open" position for servo 2
 volatile uint8_t servo1Closed = 0;  //  the "closed" position for servo 1
 volatile uint8_t servo2Closed = 0;  //  the "closed" position for servo 2
+volatile uint8_t sensorReadInterval = 60;  //  this is set to one minuet
 
 volatile uint16_t fanKickstartTime = 500; //  the time (in miliseconds) that the fan will be turned on at 100% before being set to its target value
 volatile uint16_t menuButtonHoldTime = 1000;  //  how long the "up" or "down" buttons need to be held for to be counted as being held (in miliseconds)
@@ -112,10 +113,15 @@ int16_t outTemp = 20;  //  tracks the temp outside the enclosure
 
 //********************************************************************************************************************************************************************************
 
-void menuItem::create(volatile void *dat, uint8_t datType, String n) {
-  data = dat;
-  name = n;
-  dataType = datType;
+menuItem::menuItem(volatile void *dat, uint8_t datType, String n)
+  : data(dat), dataType(datType), name(n) {
+  menuItem_minVal = 0;
+  menuItem_maxVal = 9999;
+}
+
+menuItem::menuItem(volatile void *dat, uint8_t datType, uint32_t minVal, uint32_t maxVal, String n)
+  : data(dat), dataType(datType), menuItem_minVal(minVal), menuItem_maxVal(maxVal), name(n) {
+
 }
 
 void menuItem::setData(volatile void *dat) {
@@ -132,6 +138,14 @@ void menuItem::setDataType(uint8_t datType) {
 
 uint8_t menuItem::getDataType() {
   return dataType;
+}
+
+uint32_t menuItem::getMinVal() {
+  return menuItem_minVal;
+}
+
+uint32_t menuItem::getMaxVal() {
+  return menuItem_maxVal;
 }
 
 void menuItem::setName(String n) {
@@ -255,6 +269,7 @@ bool light::getState() {
   return light_state;
 }
 
+/*
 void light::tick() {
   if (light_changing) {  //  if we are changing the lights
 
@@ -302,6 +317,53 @@ void light::tick() {
   
   }  //  if (light_changing)
 }  //  light::tick()
+*/
+
+void light::tick() {
+  if (light_changing) {  // If we are changing the lights
+    uint32_t thresholdTime = (millis() - light_speed);
+
+    if (light_state) {  // If we are turning them on
+      if (light_toChange) {  // If we haven't started changing the lights yet
+        light_toChange = false;
+        light_i = 0;
+      }
+
+      if (thresholdTime > light_time) {  // If it has been long enough since we last updated the lights
+        light_time = millis();
+        uint8_t elapsedDims = byte(thresholdTime / light_time);
+        uint8_t maxIncrement = 255 - light_i;
+        uint8_t increment = min(elapsedDims, maxIncrement);
+        light_i += increment;
+        analogWrite(light_pin, light_i);
+      }
+
+      if (light_i >= 255) {  // If we are done changing them
+        light_changing = false;
+      }
+
+    } else {  // If we are turning them off
+      if (light_toChange) {  // If we haven't started changing the lights yet
+        light_toChange = false;
+        light_i = 255;
+      }
+
+      if (thresholdTime > light_time) {  // If it has been long enough since we last updated the lights
+        light_time = millis();
+        uint8_t decrement = byte(thresholdTime / light_time);
+        light_i -= decrement;
+        analogWrite(light_pin, light_i);
+      }
+
+      if (light_i <= 0) {  // If we are done changing them
+        light_changing = false;
+        light_i = 0; // Ensure it doesn't go negative
+        analogWrite(light_pin, light_i);
+      }
+    }
+  }
+}
+
 
 //********************************************************************************************************************************************************************************
 
@@ -312,7 +374,34 @@ light mainLight(lightsPin, dimingTime, false);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 //  the main menu (an array of instances of the menuItem class)
-menuItem mainMenu[menuLength];  //  create the main menu with a set number of items in it
+menuItem mainMenu[] = { 
+  menuItem(&mode, 1, 1, 3, "Mode"),
+  menuItem(&globalSetTemp, 1, 10, 65, "Set tmp."),
+  menuItem(&maxFanSpeed, 1, 0, 255, "Max fan spd."),
+  menuItem(&lightSetState, 0, "Lights"),
+  menuItem(&printDone, 0, "Print done"),
+  menuItem(&fanKickstartTime, 3, 0, 9999, "Fan ks. time"),
+  menuItem(&bigDiff, 1, 1, 99, "Big tmp. diff."),
+  menuItem(&cooldownDif, 1, 1, 99, "Cd. diff."),
+  menuItem(&defaultMaxFanSpeed, 1, 0, 255, "Def. max f. spd."),
+  menuItem(&dimingTime, 1, 1, 255, "M.l. dmng. spd."),
+  menuItem(&pdl_DimingTime, 1, 1, 255, "Pd.l. dmng. spd."),
+  menuItem(&servo1Closed, 1, 0, 199, "S. 1 c. pos."),
+  menuItem(&servo2Closed, 1, 0, 199, "S. 2 c. pos."),
+  menuItem(&servo1Open, 1, 0, 199, "S. 1 o. pos."),
+  menuItem(&servo2Open, 1, 0, 199, "S. 2 o. pos."),
+  menuItem(&fanOnVal, 1, 0, 255, "F. on val."),
+  menuItem(&fanOffVal, 1, 0, 255, "F. off val."),
+  menuItem(&fanMidVal, 1, 0, 255, "F. mid val."),
+  menuItem(&menuScrollSpeed, 1, 1, 255, "Scrl. spd."),
+  menuItem(&menuButtonHoldTime, 3, 10, 9999, "Btn. hld. t."),
+  menuItem(&nameScrollSpeed, 1, 1, 255, "Name scrl. spd."),
+  menuItem(&lights_On_On_Door_Open, 0, "L. on door open"),
+  menuItem(&sensorReads, 1, 1, 10, "sensor reads"),
+  menuItem(&sensorReadInterval, 1, 0, 255, "S. read intrvl.")
+  };  //  create the main menu with some number of items in it
+
+const uint8_t menuLength = sizeof(mainMenu) / sizeof(mainMenu[0]);  //  automatically find the number of menu items created
 
 //  set servo variables:
 Servo servo1;

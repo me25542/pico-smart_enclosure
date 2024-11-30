@@ -49,28 +49,7 @@ bool isI2CDeviceConnected(uint8_t address) {
   uint16_t i;
   bool isNotError = false;
 
-  /*
-  //  start I2C0 (the sensor bus):
-  {
-    uint32_t i;
-    for (i = 0; i2c0InUse && i < maxI2CWaitTime; i++) {
-      delayMicroseconds(1);
-    }
-    
-    if (i >= maxI2CWaitTime) {
-      mode = 0;
-      errorOrigin = 13;
-      errorInfo = 2;
-      errorInfo = errorInfo << 16;
-      errorInfo += address;
-      printf("wait for I2C resource timeout.\n");
-      return false;
-    }
-  }
-
-  i2c0InUse = true;
-  */
-  //mutex_enter_blocking(&I2C_mutex);  //  wait for I2C resources to be available
+  
   {
     uint32_t i;
     for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
@@ -93,7 +72,6 @@ bool isI2CDeviceConnected(uint8_t address) {
     isNotError = I2CError == 0;
   }
 
-  //i2c0InUse = false;
   mutex_exit(&I2C_mutex);
 
   #ifdef debug
@@ -190,16 +168,6 @@ bool isScreenConnected() {
       return true;
     }
   }
-  /*
-  if (isI2CDeviceConnected(SCREEN_ADDRESS)) {
-    return true;
-  } else {
-    mode = 0;
-    errorOrigin = 12;
-    errorInfo = SCREEN_ADDRESS;
-    return false;
-  }
-  */
 }
 
 
@@ -250,8 +218,9 @@ void setServos(uint8_t s1_Pos, uint8_t s2_Pos) {
   oldS2_Pos = s2_Pos;  //  record the state of the servos
 }
 
-//  the function to set the state of booth heaters, and the fan (the temp-related stuff)
+//  the function to set the state of both heaters, and the fan (the temp-related stuff)
 void setHeaters(bool h1_On, bool h2_On, uint8_t fanVal) {
+  static bool fanWasOn = false;
   #ifdef debug
   uint8_t core = rp2040.cpuid();
   printf("setHeaters(%d, %d, %u) called from core%u.\n", h1_On, h2_On, fanVal, core);  //  print a debug message over the sellected debug port
@@ -273,13 +242,19 @@ void setHeaters(bool h1_On, bool h2_On, uint8_t fanVal) {
 
   digitalWrite(heater1Pin, ! h1_On);  //  set the value of heater1
   digitalWrite(heater2Pin, ! h2_On);  //  set the value of heater2
-  if (fanVal != 0) {  //  if the fan is being set to something other than 0:
+  if (fanVal) {  //  if the fan is being set to something other than 0:
+    if (!fanWasOn) {
+      fanWasOn = true;
+      digitalWrite(fanPin, HIGH);  //  turn the fan on at 100%
+      delay(fanKickstartTime);  //  and wait for a bit to let it spin up
+    }
+
     setServos(servo1Open, servo2Open);  //  move the servos to open
-    digitalWrite(fanPin, HIGH);  //  turn the fan on at 100%
-    delay(fanKickstartTime);  //  and wait for a bit to let it spin up
+    
     analogWrite(fanPin, min(fanVal, maxFanSpeed));  //  then set the fan speed to its target value or the maximum fan speed, whichever is less
 
   } else {  //  if the fan is being set to 0:
+    fanWasOn = false;
     setServos(servo1Closed, servo2Closed);  //  move the servos to closed
     digitalWrite(fanPin, LOW);  //  turn the fan off
   }
@@ -298,35 +273,191 @@ bool getTemp() {
   printf("getTemp() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
   
-  
-  {
-    uint32_t i;
-    for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
-      delayMicroseconds(1);
+  static volatile uint32_t lastReadTime = 120000;
+
+  if (millis() - lastReadTime >= (sensorReadInterval * 1000)) {  //  if it has been long enough sience last reading
+    lastReadTime = millis();  //  update the time
+
+    #ifdef debug
+    printf("It has been long enough between temp readings, reading the temp...\n");
+    #endif
+
+    {
+      uint32_t i;
+      for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
+        delayMicroseconds(1);
+      }
+
+      if (i >= maxI2CWaitTime) {
+        mode = 0;
+        errorOrigin = 13;
+        errorInfo = 4;
+        errorInfo = errorInfo << 16;
+        errorInfo += 1;
+        return false;
+      }
+    }
+    
+    //  wake up I2C temp sensors:
+    heaterTempSensor.wake();
+
+    mutex_exit(&I2C_mutex);
+
+    delayMicroseconds(1);  //  wait for a little bit for the other core to be able to take the mutex
+
+    {
+      uint32_t i;
+      for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
+        delayMicroseconds(1);
+      }
+
+      if (i >= maxI2CWaitTime) {
+        mode = 0;
+        errorOrigin = 13;
+        errorInfo = 4;
+        errorInfo = errorInfo << 16;
+        errorInfo += 2;
+        return false;
+      }
     }
 
-    if (i >= maxI2CWaitTime) {
-      mode = 0;
-      errorOrigin = 13;
-      errorInfo = 4;
-      errorInfo = errorInfo << 16;
-      return false;
+    inTempSensor.wake();
+
+    mutex_exit(&I2C_mutex);
+
+    delayMicroseconds(1);  //  wait for a little bit for the other core to be able to take the mutex
+
+    {
+      uint32_t i;
+      for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
+        delayMicroseconds(1);
+      }
+
+      if (i >= maxI2CWaitTime) {
+        mode = 0;
+        errorOrigin = 13;
+        errorInfo = 4;
+        errorInfo = errorInfo << 16;
+        errorInfo += 3;
+        return false;
+      }
     }
-  }
-  
-  //  wake up I2C temp sensors:
-  heaterTempSensor.wake();
-  inTempSensor.wake();
-  outTempSensor.wake();
 
-  mutex_exit(&I2C_mutex);
+    outTempSensor.wake();
 
-  //  make some temporary variables to store the sum of all mesured temps (for avereging)
-  int16_t tempHeaterTemp = 0;
-  int16_t tempInTemp = 0;
-  int16_t tempOutTemp = 0;
+    mutex_exit(&I2C_mutex);
 
-  for (uint8_t i = 0; i < sensorReads; i++) {  //  do the stuff in this loop the number of times set by sensorReads
+    delayMicroseconds(1);  //  wait for a little bit for the other core to be able to take the mutex
+
+    //  make some temporary variables to store the sum of all mesured temps (for avereging)
+    int16_t tempHeaterTemp = 0;
+    int16_t tempInTemp = 0;
+    int16_t tempOutTemp = 0;
+
+    for (uint8_t i = 0; i < sensorReads; i++) {  //  do the stuff in this loop the number of times set by sensorReads
+      {
+        uint32_t i;
+        for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
+          delayMicroseconds(1);
+        }
+
+        if (i >= maxI2CWaitTime) {
+          mode = 0;
+          errorOrigin = 13;
+          errorInfo = 4;
+          errorInfo = errorInfo << 16;
+          return false;
+        }
+      }
+
+      int16_t tHeaterTemp = static_cast<int16_t>(heaterTempSensor.readTempC());  //  get the temperature from the sensor
+
+      mutex_exit(&I2C_mutex);
+
+      if (tHeaterTemp <= minTemp || tHeaterTemp >= maxHeaterTemp) {  //  if it is not within the acceptable range
+        mode = 0;  //  set the mode to error
+        errorOrigin = 1;  //  record what caused the error
+
+        //  record both the sensor that caused the error, and the value it read, all in one variable
+        errorInfo = 1;  //  record the sensor that triggered the error
+        errorInfo <<= 16;  //  move that info 8 bits to the left (errorInfo is a 32-bit signed integer)
+        errorInfo += static_cast<uint8_t>(tHeaterTemp);  //  add an aproxamation of the read value to errorInfo
+
+        return false;
+
+      } else {  //  if it is withing the acceptable range
+        tempHeaterTemp += tHeaterTemp;  //  add the reading to a avriable so it can be averaged
+      }
+
+      {
+        uint32_t i;
+        for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
+          delayMicroseconds(1);
+        }
+
+        if (i >= maxI2CWaitTime) {
+          mode = 0;
+          errorOrigin = 13;
+          errorInfo = 4;
+          errorInfo = errorInfo << 16;
+          return false;
+        }
+      }
+
+      int16_t tInTemp = static_cast<int16_t>(inTempSensor.readTempC());  //  get the temperature from the sensor
+
+      mutex_exit(&I2C_mutex);
+
+      if (tInTemp <= minTemp || tInTemp >= maxInOutTemp) {  //  if it is not within the acceptable range
+        mode = 0;  //  set the mode to error
+        errorOrigin = 1;  //  record what caused the error
+
+        //  record both the sensor that caused the error, and the value it read, all in one variable
+        errorInfo = 2;  //  record the sensor that triggered the error
+        errorInfo <<= 16;  //  move that info 8 bits to the left (errorInfo is a 32-bit signed integer)
+        errorInfo += static_cast<uint8_t>(tInTemp);  //  add an aproxamation of the read value to errorInfo
+
+        return false;
+
+      } else {
+        tempInTemp += tInTemp;  //  add the reading to a avriable so it can be averaged
+      }
+
+      {
+        uint32_t i;
+        for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
+          delayMicroseconds(1);
+        }
+
+        if (i >= maxI2CWaitTime) {
+          mode = 0;
+          errorOrigin = 13;
+          errorInfo = 4;
+          errorInfo = errorInfo << 16;
+          return false;
+        }
+      }
+
+      int16_t tOutTemp = static_cast<int16_t>(outTempSensor.readTempC());  //  get the temperature from the sensor
+
+      mutex_exit(&I2C_mutex);
+
+      if (tOutTemp <= minTemp || tOutTemp >= maxInOutTemp) {  //  if it is not within the acceptable range
+        mode = 0;  //  set the mode to error
+        errorOrigin = 1;  //  record what caused the error
+
+        //  record both the sensor that caused the error, and the value it read, all in one variable
+        errorInfo = 4;  //  record the sensor that triggered the error
+        errorInfo <<= 16;  //  move that info 8 bits to the left (errorInfo is a 32-bit signed integer)
+        errorInfo += static_cast<uint8_t>(tOutTemp);  //  add an aproxamation of the read value to errorInfo
+
+        return false;
+
+      } else {
+        tempOutTemp += tOutTemp;  //  add the reading to a variable so it can be averaged
+      }
+    }
+
     {
       uint32_t i;
       for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
@@ -341,126 +472,31 @@ bool getTemp() {
         return false;
       }
     }
-
-    int16_t tHeaterTemp = static_cast<int16_t>(heaterTempSensor.readTempC());  //  get the temperature from the sensor
-
+    
+    //  put the I2C temp sensors to sleep:
+    heaterTempSensor.shutdown();
+    inTempSensor.shutdown();
+    outTempSensor.shutdown();
+    
     mutex_exit(&I2C_mutex);
 
-    if (tHeaterTemp <= minTemp || tHeaterTemp >= maxHeaterTemp) {  //  if it is not within the acceptable range
-      mode = 0;  //  set the mode to error
-      errorOrigin = 1;  //  record what caused the error
+    heaterTemp = tempHeaterTemp / sensorReads;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
+    inTemp = tempInTemp / sensorReads;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
+    outTemp = tempOutTemp / sensorReads;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
 
-      //  record both the sensor that caused the error, and the value it read, all in one variable
-      errorInfo = 1;  //  record the sensor that triggered the error
-      errorInfo <<= 16;  //  move that info 8 bits to the left (errorInfo is a 32-bit signed integer)
-      errorInfo += static_cast<uint8_t>(tHeaterTemp);  //  add an aproxamation of the read value to errorInfo
+    #ifdef debug
+    printf("Heater temp: %d. | In temp: %d. | Out temp: %d.\n", heaterTemp, inTemp, outTemp);  //  print a debug message over the sellected debug port
+    #endif
 
-      return false;
+    return true;
 
-    } else {  //  if it is withing the acceptable range
-      tempHeaterTemp += tHeaterTemp;  //  add the reading to a avriable so it can be averaged
-    }
+  } else {  //  if it hasn't been long enough sience the last temp reading
+    #ifdef debug
+    printf("It hasn't been long enough between temp readings, not reading the temp.\n");
+    #endif
 
-    {
-      uint32_t i;
-      for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
-        delayMicroseconds(1);
-      }
-
-      if (i >= maxI2CWaitTime) {
-        mode = 0;
-        errorOrigin = 13;
-        errorInfo = 4;
-        errorInfo = errorInfo << 16;
-        return false;
-      }
-    }
-
-    int16_t tInTemp = static_cast<int16_t>(inTempSensor.readTempC());  //  get the temperature from the sensor
-
-    mutex_exit(&I2C_mutex);
-
-    if (tInTemp <= minTemp || tInTemp >= maxInOutTemp) {  //  if it is not within the acceptable range
-      mode = 0;  //  set the mode to error
-      errorOrigin = 1;  //  record what caused the error
-
-      //  record both the sensor that caused the error, and the value it read, all in one variable
-      errorInfo = 2;  //  record the sensor that triggered the error
-      errorInfo <<= 16;  //  move that info 8 bits to the left (errorInfo is a 32-bit signed integer)
-      errorInfo += static_cast<uint8_t>(tInTemp);  //  add an aproxamation of the read value to errorInfo
-
-      return false;
-
-    } else {
-      tempInTemp += tInTemp;  //  add the reading to a avriable so it can be averaged
-    }
-
-    {
-      uint32_t i;
-      for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
-        delayMicroseconds(1);
-      }
-
-      if (i >= maxI2CWaitTime) {
-        mode = 0;
-        errorOrigin = 13;
-        errorInfo = 4;
-        errorInfo = errorInfo << 16;
-        return false;
-      }
-    }
-
-    int16_t tOutTemp = static_cast<int16_t>(outTempSensor.readTempC());  //  get the temperature from the sensor
-
-    mutex_exit(&I2C_mutex);
-
-    if (tOutTemp <= minTemp || tOutTemp >= maxInOutTemp) {  //  if it is not within the acceptable range
-      mode = 0;  //  set the mode to error
-      errorOrigin = 1;  //  record what caused the error
-
-      //  record both the sensor that caused the error, and the value it read, all in one variable
-      errorInfo = 4;  //  record the sensor that triggered the error
-      errorInfo <<= 16;  //  move that info 8 bits to the left (errorInfo is a 32-bit signed integer)
-      errorInfo += static_cast<uint8_t>(tOutTemp);  //  add an aproxamation of the read value to errorInfo
-
-      return false;
-
-    } else {
-      tempOutTemp += tOutTemp;  //  add the reading to a variable so it can be averaged
-    }
-  }
-
-  {
-    uint32_t i;
-    for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
-      delayMicroseconds(1);
-    }
-
-    if (i >= maxI2CWaitTime) {
-      mode = 0;
-      errorOrigin = 13;
-      errorInfo = 4;
-      errorInfo = errorInfo << 16;
-      return false;
-    }
-  }
-  
-  //  put the I2C temp sensors to sleep:
-  heaterTempSensor.shutdown();
-  inTempSensor.shutdown();
-  outTempSensor.shutdown();
-  
-  mutex_exit(&I2C_mutex);
-
-  heaterTemp = tempHeaterTemp / sensorReads;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
-  inTemp = tempInTemp / sensorReads;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
-  outTemp = tempOutTemp / sensorReads;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
-
-  #ifdef debug
-  printf("Heater temp: %d. | In temp: %d. | Out temp: %d.\n", heaterTemp, inTemp, outTemp);  //  print a debug message over the sellected debug port
-  #endif
-
-  return true;
+    return true;
+  }  //  else (  if (millis() - lastReadTime >= sensorReadInterval)  )
 }
 
 void lightswitchPressed() {
@@ -552,9 +588,7 @@ void checkButtons() {
 
   if (door_switch.pressed()) {
     doorClosing();
-  }
-
-  if (door_switch.released()) {
+  } else if (door_switch.released()) {
     doorOpening();
   }
 
@@ -563,7 +597,6 @@ void checkButtons() {
     printf("Light switch pressed.\n");  //  print a debug message over the sellected debug port
     #endif
 
-    //mainLight.changeState();  //  Change the light state
     lightswitchPressed();
   }
 

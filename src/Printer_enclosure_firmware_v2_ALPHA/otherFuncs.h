@@ -23,7 +23,7 @@
 #ifndef OTHERFUNCS_H
 #define OTHERFUNCS_H
 
-//#define debug
+#define debug
 
 //  a simple function to blink the built-in LED
 void blinkLED(unsigned long blinkTime);

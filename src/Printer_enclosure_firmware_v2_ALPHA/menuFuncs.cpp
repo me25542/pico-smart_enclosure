@@ -202,26 +202,7 @@ void printMenu(uint8_t lower_Bound, uint8_t uper_Bound, bool dispName) {
     vertPos += lineSpacing;  //  remember to set the cursor lower next iteration of the FOR loop
   }  //  FOR loop
 
-  /*
-  {
-    uint32_t i;
-    for (i = 0; i2c0InUse && i < maxI2CWaitTime; i++) {
-      delayMicroseconds(1);
-    }
-    
-    if (i >= maxI2CWaitTime) {
-      mode = 0;
-      errorOrigin = 13;
-      errorInfo = 8;
-      errorInfo = errorInfo << 16;
-      printf("wait for I2C resource timeout.\n");
-      return;
-    }
-  }
 
-  i2c0InUse = true;
-  */
-  //mutex_enter_blocking(&I2C_mutex);  //  wait for I2C resources to be available
   {
     uint32_t i;
     for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
@@ -239,7 +220,6 @@ void printMenu(uint8_t lower_Bound, uint8_t uper_Bound, bool dispName) {
 
   display.display();  //  write everything to the display
 
-  //i2c0InUse = false;
   mutex_exit(&I2C_mutex);
 }  //  printMenu()
 
@@ -339,44 +319,73 @@ void up_switch_Pressed() {
 
   if (editingMenuItem) {  //  if we are editing the data pointed to by an item
     uint8_t dataType = mainMenu[selectedItem].getDataType();  //  find out what type of data it is
+    uint32_t minVal = mainMenu[selectedItem].getMinVal();
+    uint32_t maxVal = mainMenu[selectedItem].getMaxVal();
 
     switch (dataType) {  //  based on the datatype, edit a different preview variable
       case 0:  //  if it is a bool
-        tmp_bool = ! tmp_bool;  //  change the preview variable to the opposit of its current value
+        tmp_bool = !tmp_bool;  //  change the preview variable to the opposit of its current value
         break;  //  exit the switch... case statement
-      
+
       case 1:  //  if it is an unsigned 8-bit integer
-        tmp_uint8t += 1;  //  add one to the preview variable
+        if (tmp_uint8t >= maxVal) {  //  If tmp_uint8t is at its max, loop back to minVal
+          tmp_uint8t = static_cast<uint8_t>(minVal);
+        } else {
+          tmp_uint8t++;  //  Otherwise, increment it
+        }
         break;  //  exit the switch... case statement
-      
+
       case 2:  //  if it is a signed 8-bit integer
-        tmp_int8t += 1;  //  add one to the preview variable
+        if (tmp_int8t >= static_cast<int8_t>(maxVal)) {  //  If tmp_int8t is at its max, loop back to minVal
+          tmp_int8t = static_cast<int8_t>(minVal);
+        } else {
+          tmp_int8t++;  //  Otherwise, increment it
+        }
         break;  //  exit the switch... case statement
-      
+
       case 3:  //  if it is an unsigned 16-bit integer
-        tmp_uint16t += 1;  //  add one to the preview variable
+        if (tmp_uint16t >= maxVal) {  //  If tmp_uint16t is at its max, loop back to minVal
+          tmp_uint16t = minVal;
+        } else {
+          tmp_uint16t++;  //  Otherwise, increment it
+        }
         break;  //  exit the switch... case statement
-      
+
       case 4:  //  if it is a signed 16-bit integer
-        tmp_int16t += 1;  //  add one to the preview variable
+        if (tmp_int16t >= static_cast<int16_t>(maxVal)) {  //  If tmp_int16t is at its max, loop back to minVal
+          tmp_int16t = static_cast<int16_t>(minVal);
+        } else {
+          tmp_int16t++;  //  Otherwise, increment it
+        }
         break;  //  exit the switch... case statement
-      
+
       case 5:  //  if it is an unsigned 32-bit integer
-        tmp_uint32t += 1;  //  add one to the preview variable
+        if (tmp_uint32t >= maxVal) {  //  If tmp_uint32t is at its max, loop back to minVal
+          tmp_uint32t = minVal;
+        } else {
+          tmp_uint32t++;  //  Otherwise, increment it
+        }
         break;  //  exit the switch... case statement
-      
+
       case 6:  //  if it is a signed 32-bit integer
-        tmp_int32t += 1;  //  add one to the preview variable
+        if (tmp_int32t >= static_cast<int32_t>(maxVal)) {  //  If tmp_int32t is at its max, loop back to minVal
+          tmp_int32t = static_cast<int32_t>(minVal);
+        } else {
+          tmp_int32t++;  //  Otherwise, increment it
+        }
         break;  //  exit the switch... case statement
-      
+
       default:  //  if we couldn't find the datatype (somethings wrong)
         mode = 0;  //  set the mode to error
         errorOrigin = 11;  //  record why
         break;  //  exit the switch... case statement
     }  //  switch... case
 
+
   } else {  //  if we are not editing the data pointed to by a menu item (if none are "sellected" or clicked on)
-    selectedItem--;  //  change the one that is sellected (but isn't actually "sellected" or clicked on)
+    if (--selectedItem >= menuLength) {  //  change the one that is sellected (but isn't actually "sellected" or clicked on), and check if it underflowed
+      selectedItem = menuLength - 1;  //  if it did, reset it
+    }
   }  //  else (  if (editingMenuItem)  )
 }  //  up_switch_Pressed()
 
@@ -389,36 +398,62 @@ void down_switch_Pressed() {
 
   if (editingMenuItem) {  //  if we are editing the data pointed to by an item
     uint8_t dataType = mainMenu[selectedItem].getDataType();  //  find out what type of data it is
+    uint32_t minVal = mainMenu[selectedItem].getMinVal();  //  get the minimum allowed value
+    uint32_t maxVal = mainMenu[selectedItem].getMaxVal();  //  get the maximum allowed value
 
     switch (dataType) {  //  based on the datatype, edit a different preview variable
       case 0:  //  if it is a bool
-        tmp_bool = ! tmp_bool;  //  change the preview variable to the opposit of its current value
+        tmp_bool = !tmp_bool;  //  change the preview variable to the opposit of its current value
         break;  //  exit the switch... case statement
-      
+
       case 1:  //  if it is an unsigned 8-bit integer
-        tmp_uint8t -= 1;  //  add one to the preview variable
+        if (tmp_uint8t <= minVal) {  //  If tmp_uint8t is at its min, loop back to maxVal
+          tmp_uint8t = static_cast<uint8_t>(maxVal);
+        } else {
+          tmp_uint8t--;  //  Otherwise, decrement it
+        }
         break;  //  exit the switch... case statement
-      
+
       case 2:  //  if it is a signed 8-bit integer
-        tmp_int8t -= 1;  //  add one to the preview variable
+        if (tmp_int8t <= static_cast<int8_t>(minVal)) {  //  If tmp_int8t is at its min, loop back to maxVal
+          tmp_int8t = static_cast<int8_t>(maxVal);
+        } else {
+          tmp_int8t--;  //  Otherwise, decrement it
+        }
         break;  //  exit the switch... case statement
-      
+
       case 3:  //  if it is an unsigned 16-bit integer
-        tmp_uint16t -= 1;  //  add one to the preview variable
+        if (tmp_uint16t <= minVal) {  //  If tmp_uint16t is at its min, loop back to maxVal
+          tmp_uint16t = maxVal;
+        } else {
+          tmp_uint16t--;  //  Otherwise, decrement it
+        }
         break;  //  exit the switch... case statement
-      
+
       case 4:  //  if it is a signed 16-bit integer
-        tmp_int16t -= 1;  //  add one to the preview variable
+        if (tmp_int16t <= static_cast<int16_t>(minVal)) {  //  If tmp_int16t is at its min, loop back to maxVal
+          tmp_int16t = static_cast<int16_t>(maxVal);
+        } else {
+          tmp_int16t--;  //  Otherwise, decrement it
+        }
         break;  //  exit the switch... case statement
-      
+
       case 5:  //  if it is an unsigned 32-bit integer
-        tmp_uint32t -= 1;  //  add one to the preview variable
+        if (tmp_uint32t <= minVal) {  //  If tmp_uint32t is at its min, loop back to maxVal
+          tmp_uint32t = maxVal;
+        } else {
+          tmp_uint32t--;  //  Otherwise, decrement it
+        }
         break;  //  exit the switch... case statement
-      
+
       case 6:  //  if it is a signed 32-bit integer
-        tmp_int32t -= 1;  //  add one to the preview variable
+        if (tmp_int32t <= static_cast<int32_t>(minVal)) {  //  If tmp_int32t is at its min, loop back to maxVal
+          tmp_int32t = static_cast<int32_t>(maxVal);
+        } else {
+          tmp_int32t--;  //  Otherwise, decrement it
+        }
         break;  //  exit the switch... case statement
-      
+
       default:  //  if we couldn't find the datatype (somethings wrong)
         mode = 0;  //  set the mode to error
         errorOrigin = 11;  //  record why
@@ -426,7 +461,9 @@ void down_switch_Pressed() {
     }  //  switch... case
 
   } else {  //  if we are not editing the data pointed to by a menu item (if none are "sellected" or clicked on)
-    selectedItem++;  //  change the one that is sellected (but isn't actually "sellected" or clicked on)
+    if (++selectedItem >= menuLength) {  //  change the one that is sellected (but isn't actually "sellected" or clicked on) and check if it is outside of the menu
+      selectedItem = 0;  //  if it is, reset it to 0
+    }
   }  //  else (  if (editingMenuItem)  )
 }  //  down_switch_Pressed
 

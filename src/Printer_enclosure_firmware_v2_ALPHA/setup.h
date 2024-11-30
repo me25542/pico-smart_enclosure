@@ -23,7 +23,7 @@
 #ifndef SETUP_H
 #define SETUP_H
 
-//#define debug
+#define debug
 
 void servoSetup();
 

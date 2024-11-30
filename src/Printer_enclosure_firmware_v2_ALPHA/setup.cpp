@@ -53,27 +53,6 @@ bool tempSensorSetup() {
   printf("tempSensorSetup() called.\n");  //  print a debug message over the sellected debug port
   #endif
 
-  //  start I2C0 (the sensor bus):
-  /*
-  {
-    uint32_t i;
-    for (i = 0; i2c0InUse && i < maxI2CWaitTime; i++) {
-      delayMicroseconds(1);
-    }
-    
-    if (i >= maxI2CWaitTime) {
-      mode = 0;
-      errorOrigin = 13;
-      errorInfo = 1;
-      errorInfo = errorInfo << 16;
-      printf("I2C use timeout");
-      return false;
-    }
-  }
-
-  i2c0InUse = true;
-  */
-  //mutex_enter_blocking(&I2C_mutex);  //  wait for I2C resources to be available
   {
     uint32_t i;
     for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {
@@ -205,6 +184,14 @@ void buttonSetup() {
   sell_switch.setPressedState(! digitalRead(sellPin));
   up_switch.setPressedState(! digitalRead(upPin));
   down_switch.setPressedState(! digitalRead(downPin));
+
+  //  update switches
+  door_switch.update();
+  light_switch.update();
+  coolDown_switch.update();
+  sell_switch.update();
+  up_switch.update();
+  down_switch.update();
 }
 
 void pinSetup() {
@@ -238,50 +225,6 @@ bool menuSetup() {
   printf("menuSetup() called.\n");  //  print a debug message over the sellected debug port
   #endif
   
-  //  datatypes: (all volatile) 0 = bool, 1 = uint8_t, 2 = int8_t, 3 = uint16_t, 4 = int16_t, 5 = uint32_t, 6 = int32_t (may change)
-  //  names should not exceed 17 characters in length
-  mainMenu[0].create(&mode, 1, "Mode");  //  fill in the info for item 0 on the main menu
-  mainMenu[1].create(&globalSetTemp, 1, "Set tmp.");  //  fill in the info for item 1 on the main menu
-  mainMenu[2].create(&maxFanSpeed, 1, "Max fan spd.");  //  fill in the info for item 2 on the main menu
-  mainMenu[3].create(&lightSetState, 0, "Lights");  //  fill in the info for item 3 on the main menu
-  mainMenu[4].create(&printDone, 0, "Print done");  //  fill in the info for item 4 on the main menu
-  mainMenu[5].create(&fanKickstartTime, 3, "Fan ks. time");  //  fill in the info for item 5 on the main menu
-  mainMenu[6].create(&bigDiff, 1, "Big tmp. diff.");  //  fill in the info for item 6 on the main menu
-  mainMenu[7].create(&cooldownDif, 1, "Cd. diff.");  //  fill in the info for item 7 on the main menu
-  mainMenu[8].create(&defaultMaxFanSpeed, 1, "Def. max f. spd.");  //  fill in the info for item 8 on the main menu
-  mainMenu[9].create(&dimingTime, 1, "M.l. dmng. spd.");  //  fill in the info for item 9 on the main menu
-  mainMenu[10].create(&pdl_DimingTime, 1, "Pd.l. dmng. spd.");  //  fill in the info for item 10 on the main menu
-  mainMenu[11].create(&il_DimingTime, 1, "I.l. dmng. spd.");  //  fill in the info for item 11 on the main menu
-  mainMenu[12].create(&servo1Closed, 1, "S. 1 c. pos.");  //  fill in the info for item 12 on the main menu
-  mainMenu[13].create(&servo2Closed, 1, "S. 2 c. pos.");  //  fill in the info for item 13 on the main menu
-  mainMenu[14].create(&servo1Open, 1, "S. 1 o. pos.");  //  fill in the info for item 14 on the main menu
-  mainMenu[15].create(&servo2Open, 1, "S. 2 o. pos.");  //  fill in the info for item 15 on the main menu
-  mainMenu[16].create(&fanOnVal, 1, "F. on val.");  //  fill in the info for item 16 on the main menu
-  mainMenu[17].create(&fanOffVal, 1, "F. off val.");  //  fill in the info for item 17 on the main menu
-  mainMenu[18].create(&fanMidVal, 1, "F. mid val.");  //  fill in the info for item 18 on the main menu
-  mainMenu[19].create(&menuScrollSpeed, 1, "Scrl. spd.");  //  fill in the info for item 19 on the main menu
-  mainMenu[20].create(&menuButtonHoldTime, 3, "Btn. hld. t.");  //  fill in the info for item 20 on the main menu
-  mainMenu[21].create(&nameScrollSpeed, 1, "Name scrl. spd.");  //  fill in the info for item 21 on the main menu
-  mainMenu[22].create(&lights_On_On_Door_Open, 0, "L. on door open");  //  fill in the info for item 22 on the main menu
-  mainMenu[23].create(&sensorReads, 1, "sensor reads");  //  fill in the info for item 23 on the main menu
-
-  /*
-  {
-    uint32_t i;
-    for (i = 0; i2c0InUse && i < 1000000; i++) {
-      delayMicroseconds(1);
-    }
-    
-    if (i >= 1000000) {
-      mode = 0;
-      printf("I2C use timeout");
-      return false;
-    }
-  }
-
-  i2c0InUse = true;
-  */
-  //mutex_enter_blocking(&I2C_mutex);  //  wait for I2C resources to be available
   {
     uint32_t i;
     for (i = 0; !mutex_try_enter(&I2C_mutex, &I2C_mutex_owner) && i < maxI2CWaitTime; i++) {

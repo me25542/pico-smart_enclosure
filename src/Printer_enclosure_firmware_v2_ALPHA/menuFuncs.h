@@ -23,8 +23,7 @@
 #ifndef MENUFUNCS_H
 #define MENUFUNCS_H
 
-//#define debug
-
+#define debug
 
 void scrollName(uint8_t height);
 

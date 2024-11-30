@@ -20,7 +20,7 @@
  * SOFTWARE.
 */
 
-//#define debug  //  this is a flag to print debuging info like, all the time. comment out when everything is working
+#define debug
 
 //********************************************************************************************************************************************************************************
 
@@ -52,7 +52,7 @@ void setup() {
 
   mutex_init(&I2C_mutex);  //  initialize the mutex protecting I2C0
 
-  for (uint16_t i = 0; i < maxSerialStartupTries && !Serial; i++);  //  wait for A computer to be connected, but only for a bit
+  for (uint16_t i = 0; i < maxSerialStartupTries && !Serial; i++);  //  wait for a computer to be connected, but only for a bit
 
   core1StartStartup = true;  //  tell the other core to start startup
 

@@ -23,9 +23,7 @@
 #ifndef MODEFUNCS_H
 #define MODEFUNCS_H
 
-//#define debug
-
-//#include "otherFuncs.h"  //  this is just for ease in writing; the include guards will block this from compiling
+#define debug
 
 // the function called every loop when the mode is standby:
 const void standby();

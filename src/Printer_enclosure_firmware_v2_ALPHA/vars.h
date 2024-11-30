@@ -56,10 +56,8 @@ const uint8_t servo1Pin = 19;  //  the pin connected to servo 2 | output
 
 const uint8_t pokPin = 18;  //  the pin connected to the PSUs P_OK pin | input
 const uint8_t printDoneLightPin = 17;  //  the pin connected to the print done light | output
+
   //  mode indicator light pins:
-//const uint8_t printingLightPin = 16;  //  the pin connected to the "printing" mode indicator light | output
-//const uint8_t cooldownLightPin = 15;  //  the pin connected to the "cooldown" mode indicator light | output
-//const uint8_t standbyLightPin = 14;  //  the pin connected to the "standby" mode indicator light | output
 const uint8_t errorLightPin = 13;  //  the pin connected to the "error" mode indicator light | output
   //  user input switch pins:
 const uint8_t coolDownSwitchPin = 12;  //  the pin connected to the "cooldown" switch / button | input
@@ -91,7 +89,7 @@ const uint8_t fanPin = 0;  //  the pin connected to the vent fan | output
 const uint8_t majorVersion = 2;
 const uint8_t minorVersion = 0;
 const uint8_t bugFixVersion = 0;
-const uint8_t buildVersion = 4;  //  this might be useful if you make your own changes to the code
+const uint8_t buildVersion = 6;  //  this might be useful if you make your own changes to the code
 
 extern volatile bool lights_On_On_Door_Open;  //  controlls if the lights turn on when the door is opened.
 extern volatile bool saveStateOnPowerLoss;
@@ -112,6 +110,7 @@ extern volatile uint8_t servo1Open;  //  the "open" position for servo 1
 extern volatile uint8_t servo2Open;  //  the "open" position for servo 2
 extern volatile uint8_t servo1Closed;  //  the "closed" position for servo 1
 extern volatile uint8_t servo2Closed;  //  the "closed" position for servo 2
+extern volatile uint8_t sensorReadInterval;  //  the minimum time (in s) between temp readings
 
 extern volatile uint16_t fanKickstartTime; //  the time (in miliseconds) that the fan will be turned on at 100% before being set to its target value
 extern volatile uint16_t menuButtonHoldTime;  //  how long the "up" or "down" buttons need to be held for to be counted as being held (in miliseconds)
@@ -120,7 +119,6 @@ const uint8_t minSetTemp = 0;
 const uint8_t maxSetTemp = 75;
 const uint8_t maxMode = 4;  //  the value at which the mode parser will start to ignore the sent byte
 extern volatile uint8_t sensorReads;  //  the number of times the temp sensors will be read each time the temp is goten (the values will be averaged)
-const uint8_t menuLength = 24;  //  BE VERRY CAREFULL CHANGING THIS! | the length of the menu (the number of items it contains)
 
 const uint16_t maxSerialStartupTries = 1000;  //  this is the number of tries (or the number of 10ms periods) that will be taken to connect to usb before giving up
 const uint16_t maxScreenStartupTries = 100;  //  this is the number of times that turning the screen on will be tried
@@ -147,7 +145,7 @@ const uint8_t outTempSensorAdress = 0x1A;  //  this is the I2C adress for the ou
 const uint8_t SCREEN_ADDRESS = 0x3C;  //  See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 const uint8_t SCREEN_HEIGHT = 64;  // OLED display height, in pixels
 const uint8_t SCREEN_WIDTH = 128;  // OLED display width, in pixels
-const uint8_t visibleMenuItems = 11;  //  the number of menu items that are visible when the print name is not displayed
+const uint8_t visibleMenuItems = 5;  //  the number of menu items that are visible when the print name is not displayed
 const uint8_t lineSpacing = 10;  //  the number of pixels between the top of each line of text
 
 //********************************************************************************************************************************************************************************
@@ -220,20 +218,18 @@ class menuItem {
 
   private:
     volatile void *data;
-    String name;
     /**
     * @brief stores the type of data pointed to by data. (all volatile) 0 = bool, 1 = uint8_t, 2 = int8_t, 3 = uint16_t, 4 = int16_t, 5 = uint32_t, 6 = int32_t
     */
     uint8_t dataType;
+    uint32_t menuItem_minVal;
+    uint32_t menuItem_maxVal;
+    String name;
 
   public:
-    /**
-    * @brief initializes the menu item with allnecisary data
-    * @param dat this is a pointer to some variable. supported types: (all volatile) bool, uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t
-    * @param datType this indicates the type of variable pointed to by dat. (all volatile) 0 = bool, 1 = uint8_t, 2 = int8_t, 3 = uint16_t, 4 = int16_t, 5 = uint32_t, 6 = int32_t
-    * @param n this is the text displayed on the menu item, in front of the value of the variable pointed to by dat. limit to 17 characters
-    */
-    void create(volatile void *dat, uint8_t datType, String n);
+    menuItem(volatile void *dat, uint8_t datType, String n);
+
+    menuItem(volatile void *dat, uint8_t datType, uint32_t minVal, uint32_t maxVal, String n);
 
     void setData(volatile void *dat);
 
@@ -248,6 +244,10 @@ class menuItem {
     * @brief returns the type of data pointed to by data. (all volatile) 0 = bool, 1 = uint8_t, 2 = int8_t, 3 = uint16_t, 4 = int16_t, 5 = uint32_t, 6 = int32_t
     */
     uint8_t getDataType();
+
+    uint32_t getMinVal();
+
+    uint32_t getMaxVal();
 
     void setName(String n);
 
@@ -360,6 +360,8 @@ extern Adafruit_SSD1306 display;
 
 //  the main menu (an array of instances of the menuItem class)
 extern menuItem mainMenu[];  //  create the main menu with a set number of items in it
+
+extern const uint8_t menuLength;  //  the length of the menu (the number of items it contains) | automatically found
 
 //  set servo variables:
 extern Servo servo1;
