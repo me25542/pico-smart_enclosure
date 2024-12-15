@@ -35,6 +35,12 @@
 #include "setup.h"
 
 
+void varInit() {
+  for (uint16_t i = 0; i <= 255; i++) {  //  repeat for all characters in printName
+    printName[i] = 0;  //  set a character in the print name to NULL (0)
+  }
+}
+
 /**
 * @brief sets up the servos, and moves them to their closed positions
 */
@@ -230,6 +236,8 @@ void buttonSetup() {
   up_switch.update();
   down_switch.update();
 
+  doorOpen = !door_switch.isPressed();  //  for startup after power loss, just going by state changes dosn't work
+
   #if debug
   printf("Exiting buttonSetup().\n");
   #endif
@@ -334,6 +342,8 @@ void backupRecovery() {
   printf("backupRecovery() called.\n");
   #endif
 
+  EEPROM.begin(2048);  //  2048 because we have 1kb (1024b) for data, and I wanted a nice number of bytes to be used (we use like 10 of the remaining 1024 for version info and if to use the data)
+
   if (static_cast<bool>(EEPROM.read(0))) {  //  if the stored data indicates to use itself
     //  get the stored version info (the version info of the code that stored the data)
     //  we do this so that if data compatability is broken by some future update we don't break things
@@ -347,7 +357,7 @@ void backupRecovery() {
 
       #if !manualPressedState
 
-      if (EEPROM.read(9) == 0xAA) {
+      if (static_cast<bool>(EEPROM.read(9))) {
         findPressedState = false;
 
         doorSw_ps = static_cast<bool>(EEPROM.read(10));
@@ -357,13 +367,8 @@ void backupRecovery() {
         upSw_ps = static_cast<bool>(EEPROM.read(14));
         downSw_ps = static_cast<bool>(EEPROM.read(15));
 
-        EEPROM.write(9, 0xAA);
-        if (EEPROM.commit()) {
-          printf("EEPROM write sucessful.\n");
-
-        } else {
-          printf("EEPROM write failed.\n");
-        }
+      } else {
+        findPressedState = true;
       }
 
       #endif

@@ -24,6 +24,11 @@
 #define SETUP_H
 
 
+/**
+* @brief initializes non-const variables to there initial values
+*/
+void varInit();
+
 void servoSetup();
 
 bool tempSensorSetup();

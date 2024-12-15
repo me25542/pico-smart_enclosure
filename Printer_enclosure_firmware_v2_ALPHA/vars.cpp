@@ -35,9 +35,8 @@ volatile uint8_t fanOnVal = 255;  //  the pwm value used when the fan should be 
 volatile uint8_t defaultMaxFanSpeed = 255;  //  the default maxumum fan speed (what will be used if nothing else is specified)
 volatile uint8_t bigDiff = 3;  //  the value used to define a large temp difference (in deg. c.)
 volatile uint8_t cooldownDif = 3;  //  if the inside and outside temps are within this value of eachother, cooldown() will go to standby()
-volatile uint8_t dimingTime = 2;  //  this * 255 = the time (in miliseconds) that togling the lights will take
-volatile uint8_t pdl_DimingTime = 1;  //  this * 255 = the time (in miliseconds) that changing the state of the print done light will take
-volatile uint8_t il_DimingTime = 1;  //  this * 255 = the time (in miliseconds) that changing the state of an indicator light will take
+volatile uint8_t dimingTime = 3;  //  this * 255 = the time (in miliseconds) that togling the lights will take
+volatile uint8_t pdl_DimingTime = 5;  //  this * 255 = the time (in miliseconds) that changing the state of the print done light will take
 volatile uint8_t i2cTempSensorRes = 1;  //  0 = 0.5, 1 = 0.25, 2 = 0.125, 3 = 0.625  (higher res takes longer to read)
 volatile uint8_t servo1Open = 180;  //  the "open" position for servo 1
 volatile uint8_t servo2Open = 180;  //  the "open" position for servo 2
@@ -70,8 +69,6 @@ volatile uint32_t tmp_uint32t;
 volatile int32_t tmp_int32t;
 
 volatile char printName[256];  //  an array of characters to store the print name
-
-volatile uint8_t I2cBuffer[256];  //  an array of bytes to store received I2C data
 
 volatile uint8_t I2cBuffer_readPos = 0;  //  stores where to read from the buffer next
 volatile uint8_t I2cBuffer_numBytes = 0;  //  stores the number of bytes to be read from the buffer
@@ -109,10 +106,10 @@ volatile bool editingMenuItem = false;  //  tracks wheather the sellected menu i
 volatile bool printingLastLoop = false;  //  tracks, basically, if the last loop went to printing() or not. used to avoid falsely seting heatingMode
 volatile bool heatingMode = false;  //  tracks if the enclosure is in heating or cooling mode (false = cooling, true = heating)
 
-volatile uint8_t printNameLength;  //  record how much of the printName variable is being used by the name
 volatile uint8_t selectedItem = 0;  //  tracks the sellected menu item
 volatile uint8_t topDisplayItem = 0;  //  tracks the menu item that is at the top of the display
 volatile uint8_t mode = 1;  //  tracks the enclosures operating mode (0 = error, 1 = standby, 2 = cooldown, 3 = printing)
+volatile uint8_t oldMode = 1;  //  tracks the mode the enclosure was in last loop
 volatile uint8_t maxFanSpeed = defaultMaxFanSpeed;  //  tracks the maximum fan speed alowable
 volatile uint8_t globalSetTemp = 20;  //  tracks what temperature the enclosure should be at
 volatile uint8_t errorOrigin = 0;  /*  records where an error originated (usefull for diagnostics)
@@ -128,6 +125,58 @@ int16_t inTemp = 20;  //  tracks the temp inside the enclosure
 int16_t outTemp = 20;  //  tracks the temp outside the enclosure
 
 //********************************************************************************************************************************************************************************
+
+circularBuffer::circularBuffer() {
+  circularBuffer_readPos = 0;
+  circularBuffer_writePos = 0;
+  circularBuffer_isFull = false;
+
+  //  write each byte in the buffer to 0
+  for (uint8_t i = 0; i != 255; i++) {
+    circularBuffer_buffer[i] = 0;
+  }
+}
+
+uint8_t circularBuffer::read() {
+  circularBuffer_isFull = false;
+
+  return circularBuffer_buffer[circularBuffer_readPos++];  //  return a byte from the buffer, move where to read from next
+    //  remember, circularBuffer_readPos is a uint8_t and will wrap around on its own
+}
+
+bool circularBuffer::write(uint8_t data) {
+  if (circularBuffer_isFull) {  //  if the buffer is full
+    return false;  //  we can't write anything
+  }
+
+  circularBuffer_buffer[circularBuffer_writePos++] = data;  //  write a byte to the buffer, move where to write to next
+    //  remember, circularBuffer_writePos is a uint8_t and will wrap around on its own
+
+  if (circularBuffer_writePos == circularBuffer_readPos) {
+    circularBuffer_isFull = true;
+  }
+
+  return true;
+}
+
+uint8_t circularBuffer::available() {
+  if (circularBuffer_isFull) {  //  if the buffer is full (the read and write positions are the same)
+    return 255;
+
+  } else {
+    return circularBuffer_writePos - circularBuffer_readPos;  //  return the number of bytes still to be read
+  }
+}
+
+bool circularBuffer::isFull() {
+  return circularBuffer_isFull;
+}
+
+bool circularBuffer::isEmpty() {
+  return (!circularBuffer_isFull && (circularBuffer_writePos == circularBuffer_readPos));  //  return true if the buffer isn't full AND the read and write positions are the same
+}
+
+//**********************************************************
 
 menuItem::menuItem(volatile void *dat, uint8_t datType, String n)
   : data(dat), dataType(datType), name(n) {
@@ -308,56 +357,6 @@ bool light::getState() {
   }
 }
 
-/*
-//  mine:
-void light::tick() {
-  if (light_changing) {  // If we are changing the lights
-    uint32_t thresholdTime = (millis() - light_speed);
-
-    if (light_state) {  // If we are turning them on
-      if (light_toChange) {  // If we haven't started changing the lights yet
-        light_toChange = false;
-        light_i = 0;
-      }
-
-      if (thresholdTime > light_time) {  // If it has been long enough since we last updated the lights
-        light_time = millis();
-        uint8_t elapsedDims = byte(thresholdTime / light_time);
-        uint8_t maxIncrement = 255 - light_i;
-        uint8_t increment = min(elapsedDims, maxIncrement);
-        light_i += increment;
-        analogWrite(light_pin, light_i);
-      }
-
-      if (light_i >= 255) {  // If we are done changing them
-        light_changing = false;
-      }
-
-    } else {  // If we are turning them off
-      if (light_toChange) {  // If we haven't started changing the lights yet
-        light_toChange = false;
-        light_i = 255;
-      }
-
-      if (thresholdTime > light_time) {  // If it has been long enough since we last updated the lights
-        light_time = millis();
-        uint8_t decrement = byte(thresholdTime / light_time);
-        light_i -= decrement;
-        analogWrite(light_pin, light_i);
-      }
-
-      if (light_i <= 0) {  // If we are done changing them
-        light_changing = false;
-        light_i = 0; // Ensure it doesn't go negative
-        analogWrite(light_pin, light_i);
-
-      }  //  if (light_i <= 0)
-    }  //  else (  if (light_state)  )
-  }  //  if (light_changing)
-}  //  light::tick()
-*/
-
-//  from ChatGPT:
 void light::tick() {
   if (light_changing) {  //  If we are in the process of changing the light state
     if (light_toChange) {  //  initialization for if we haven't started changing yet
@@ -447,6 +446,8 @@ menuItem mainMenu[] = {
   };  //  create the main menu with some number of items in it
 
 const uint8_t menuLength = sizeof(mainMenu) / sizeof(mainMenu[0]);  //  automatically find the number of menu items created
+
+circularBuffer I2cBuffer;
 
 //  set servo variables:
 Servo servo1;

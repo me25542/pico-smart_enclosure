@@ -23,6 +23,8 @@
 #ifndef MENUFUNCS_H
 #define MENUFUNCS_H
 
+//  clears the print name
+void clearName();
 
 void scrollName(uint8_t height);
 

@@ -92,7 +92,7 @@ const uint8_t fanPin = 0;  //  the pin connected to the vent fan | output
 const uint8_t majorVersion = 2;
 const uint8_t minorVersion = 0;
 const uint8_t bugFixVersion = 0;
-const uint8_t buildVersion = 10;  //  this might be useful if you make your own changes to the code
+const uint8_t buildVersion = 12;  //  this might be useful if you make your own changes to the code
 
 extern volatile bool lights_On_On_Door_Open;  //  controlls if the lights turn on when the door is opened.
 extern volatile bool saveStateOnPowerLoss;
@@ -107,7 +107,6 @@ extern volatile uint8_t bigDiff;  //  the value used to define a large temp diff
 extern volatile uint8_t cooldownDif;  //  if the inside and outside temps are within this value of eachother, cooldown() will go to standby()
 extern volatile uint8_t dimingTime;  //  this * 255 = the time (in miliseconds) that togling the lights will take
 extern volatile uint8_t pdl_DimingTime;  //  this * 255 = the time (in miliseconds) that changing the state of the print done light will take
-extern volatile uint8_t il_DimingTime;  //  this * 255 = the time (in miliseconds) that changing the state of an indicator light will take
 extern volatile uint8_t i2cTempSensorRes;  //  0 = 0.5, 1 = 0.25, 2 = 0.125, 3 = 0.625  (higher res takes longer to read)
 extern volatile uint8_t servo1Open;  //  the "open" position for servo 1
 extern volatile uint8_t servo2Open;  //  the "open" position for servo 2
@@ -185,8 +184,6 @@ extern volatile int32_t tmp_int32t;
 
 extern volatile char printName[256];  //  an array of characters to store the print name
 
-extern volatile uint8_t I2cBuffer[256];  //  an array of bytes to store received I2C data
-
 extern volatile uint8_t I2cBuffer_readPos;  //  stores where to read from the buffer next
 extern volatile uint8_t I2cBuffer_numBytes;  //  stores the number of bytes to be read from the buffer
 
@@ -236,10 +233,10 @@ extern volatile bool editingMenuItem;  //  tracks wheather the sellected menu it
 extern volatile bool printingLastLoop;  //  tracks, basically, if the last loop went to printing() or not. used to avoid falsely seting heatingMode
 extern volatile bool heatingMode;  //  tracks if the enclosure is in heating or cooling mode (false = cooling, true = heating)
 
-extern volatile uint8_t printNameLength;  //  record how much of the printName variable is being used by the name
 extern volatile uint8_t selectedItem;  //  tracks the sellected menu item
 extern volatile uint8_t topDisplayItem;  //  tracks the menu item that is at the top of the display
 extern volatile uint8_t mode;  //  tracks the enclosures operating mode (0 = error, 1 = standby, 2 = cooldown, 3 = printing)
+extern volatile uint8_t oldMode;  //  tracks the mode the enclosure was in last loop
 extern volatile uint8_t maxFanSpeed;  //  tracks the maximum fan speed alowable
 extern volatile uint8_t globalSetTemp;  //  tracks what temperature the enclosure should be at
 extern volatile uint8_t errorOrigin;  /*  records where an error originated (usefull for diagnostics)
@@ -255,6 +252,57 @@ extern int16_t inTemp;  //  tracks the temp inside the enclosure
 extern int16_t outTemp;  //  tracks the temp outside the enclosure
 
 //********************************************************************************************************************************************************************************
+
+/**
+* @brief class to implament a 256-byte circular buffer
+*/
+class circularBuffer {
+  private:
+    /**
+    * @brief the actual buffer, a 256-item array of uint8_t's
+    */
+    volatile uint8_t circularBuffer_buffer[256];
+    /**
+    * @brief where to write to next in the buffer
+    */
+    volatile uint8_t circularBuffer_writePos;
+    /**
+    * @brief where to read from next in the buffer
+    */
+    volatile uint8_t circularBuffer_readPos;
+    /**
+    * @brief stores weather or not the buffer is full; if the write and read positions are the same the buffer could be full or empty
+    */
+    volatile bool circularBuffer_isFull;
+
+  public:
+    circularBuffer();
+
+    /**
+    * @brief reads the next byte from the buffer
+    */
+    uint8_t read();
+
+    /**
+    * @brief writes a byte to the buffer. returns true on sucessfull write, false if buffer full
+    */
+    bool write(uint8_t data);
+
+    /**
+    * @brief returns the number of remaining bytes to be read in the buffer
+    */
+    uint8_t available();
+
+    /**
+    * @brief returns true if the buffer is full or not
+    */
+    bool isFull();
+
+    /**
+    * @brief return true if the buffer is empty
+    */
+    bool isEmpty();
+};
 
 /**
 * @brief class to store items on the main menu
@@ -408,6 +456,8 @@ extern Adafruit_SSD1306 display;
 extern menuItem mainMenu[];  //  create the main menu with a set number of items in it
 
 extern const uint8_t menuLength;  //  the length of the menu (the number of items it contains) | automatically found
+
+extern circularBuffer I2cBuffer;
 
 //  set servo variables:
 extern Servo servo1;

@@ -25,49 +25,62 @@
 #include "menuFuncs.h"
 
 
+//  clears the print name
+void clearName() {
+  #if debug
+  uint8_t core = rp2040.cpuid();
+  printf("clearName() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  #endif
+
+  for (uint8_t i = 0; i != 255; i++) {
+    printName[i] = 0;
+  }
+}
+
+  //  chat's (testing)
 void scrollName(uint8_t height) {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("scrollName(%u) called from core%u.\n", height, core);  //  print a debug message over the sellected debug port
+  printf("scrollName(%u) called from core%u.\n", height, core);  // print a debug message over the selected debug port
   #endif
 
   static uint8_t pos = 6;
   static uint8_t startChar = 0;
   static uint32_t time = millis();
 
-  if (! dispLastLoop) {  //  if the print name wasn't displayed last loop
-    //  reset the variables to their start values
+  if (!dispLastLoop) {  // if the print name wasn't displayed last loop
+    // reset the variables to their start values
     pos = 6;
     startChar = 0;
     time = millis();
   }
 
-  if (millis() - time > nameScrollSpeed) {  //  if enough time has elapsed sience the last movement of the cursor
-    time = millis();  //  set the new time
+  if (millis() - time > nameScrollSpeed) {  // if enough time has elapsed since the last movement of the cursor
+    time = millis();  // set the new time
 
-    if (pos == 0) {  //  if the first character is all the way to the left
-      pos = 5;  //  set the first character to one character's width from the left
-      startChar++;  //  move the firs character to be displayed to the next one
+    if (pos == 0) {  // if the first character is all the way to the left
+      pos = 5;  // set the first character to one character's width from the left
+      startChar++;  // move the first character to be displayed to the next one
 
-    } else {  //  if the first character isn't all the way to the left
-      pos--;  //  move it one pixel to the left
-    }  //  else (  if (pos == 0)  )
-  }  //  if (millis() > time + 10)
-
-  if (printNameLength - 20 < startChar) {  //  if the end of the text is visible
-    startChar = 0;  //  reset back to the start of the text
+      if (printName[startChar] == '\0') {  // if the end of the text is reached
+        startChar = 0;  // reset back to the start of the text
+      }
+    } else {  // if the first character isn't all the way to the left
+      pos--;  // move it one pixel to the left
+    }
   }
 
-  display.setCursor(pos, height);  //  set the cursor
+  display.setCursor(pos, height);  // set the cursor
 
-  uint8_t endChar = min(startChar + 20, printNameLength);  //  set the last character to be printed
-
-  //  draw the visible text
-  for (uint8_t i = startChar; i < endChar; i++) {  //  repeat for the visible part of the text
-    display.print(printName[i]);  //  print one character
-
-  }  //  for (uint8_t i = startChar; i < printNameLength; i++)
-}  //  scrollName()
+  // draw the visible text
+  for (uint8_t i = 0; i < 20; i++) {  // repeat for the visible part of the text
+    uint8_t charIndex = startChar + i;
+    if (printName[charIndex] == '\0') {  // stop if the end of the text is reached
+      break;
+    }
+    display.print(printName[charIndex]);  // print one character
+  }
+}
 
 
 void printMenu(uint8_t lower_Bound, uint8_t uper_Bound, bool dispName) {
@@ -77,6 +90,7 @@ void printMenu(uint8_t lower_Bound, uint8_t uper_Bound, bool dispName) {
   #endif
 
   uint8_t vertPos = 16;  //  set the vertical cursor position (used later)
+  
   display.clearDisplay();  //  clear the dispaly's buffer
   display.setTextSize(2);  //  2x normal size text
   display.setTextColor(SSD1306_WHITE, SSD1306_BLACK);  //  whit text on a black background
@@ -96,7 +110,12 @@ void printMenu(uint8_t lower_Bound, uint8_t uper_Bound, bool dispName) {
     scrollName(vertPos);  //  do the scroll name function, it will handel, well, scrolling the print name
     dispLastLoop = true;
     vertPos += lineSpacing;  //  move the vertical position
-  } else {
+
+  } else {  //  if we are not displaying the print name
+    if (dispLastLoop) {
+      clearName();  //  clear the name
+    }
+
     dispLastLoop = false;
   }
 

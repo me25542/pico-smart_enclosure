@@ -55,6 +55,8 @@
 //  the setup code for core 1
 void setup() {
   //  this code runs in serial, before the other core does it's startup code | put anything that can't hapen at the same time as other code here
+
+  varInit();
   
   serialSetup();
 
@@ -89,6 +91,8 @@ void setup() {
 
   printerI2cSetup();
 
+  attachInterrupt(digitalPinToInterrupt(pokPin), losingPower, FALLING);  //  power loss interrupt
+
   #if debug
   printf("waiting for core1 to start up...\n");
   #endif
@@ -119,26 +123,6 @@ void setup1() {
   while (!core1StartStartup);  //  wait for the other core to tell us to start up
 
   #if debug
-  printf("starting the eeprom...\n");
-  #endif
-
-  EEPROM.begin(2048);  //  2048 because we have 1kb (1024b) for data, and I wanted a nice number of bytes to be used (we use like 10 of the remaining 1024 for version info and if to use the data)
-
-  #if debug
-  printf("done starting the eeprom.\n");
-  #endif
-
-  #if debug
-  printf("attaching the power loss interrupt...\n");
-  #endif
-
-  //attachInterrupt(digitalPinToInterrupt(pokPin), losingPower, FALLING);
-
-  #if debug
-  printf("done ataching the power loss interrupt.\n");
-  #endif
-
-  #if debug
   printf("trying to set up the menu...\n");
   #endif
 
@@ -166,7 +150,7 @@ void setup1() {
       coreOneError();
     }
 
-    delay(1);  //  wait for a tiny bit
+    delayMicroseconds(1);  //  wait for a tiny bit
 
   } while (! coreZeroStartup);  //  and then repeat it while the first core hasn't started up
 
@@ -216,6 +200,9 @@ void loop() {
 
   //  call the mode function coresponding to the mode
   modeFuncs[mode]();
+
+  //  update the variable tracking the old mode
+  oldMode = mode;
 
   // Blink built-in LED to indicate loop
   blinkLED(1);
