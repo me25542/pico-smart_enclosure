@@ -30,58 +30,59 @@ What this data does / how it is encoded depends on the command type.
 
 ### Data bytes action by command type:
 
-**For mode (`0xFF`):**
+**For mode (`0xFF` hex, `255` dec):**
 
-data    |   action
----     |---
-`0x00`  |   mode to error
-`0x01`  |   mode to standby
-`0x02`  |   mode to cooldown
-`0x03`  |   mode to printing
-other   |   ignored
+data (hex)  |   data (dec)  |   action
+---         |---            |---
+`0x00`      |   `0`         |   mode to error
+`0x01`      |   `1`         |   mode to standby
+`0x02`      |   `2`         |   mode to cooldown
+`0x03`      |   `3`         |   mode to printing
+other       |   other       |   ignored
 
-**For set temp (`0xFE`):**
+**For set temp (`0xFE` hex, `254` dec):**
 
-data    |   action
----     |---
-`0x00`  |   set temp to 0 (deg. c.)
-`0x01`  |   set temp to 1
---      |   --
-`0x4A`  |   set temp to 74
-`0x4B`  |   set temp to 75
-other   |   ignored
+data (hex)  |   data (dec)  |   action
+---         |---            |---
+`0x00`      |   `0`         |   set temp to 0 (deg. c.)
+`0x01`      |   `1`         |   set temp to 1
+--          |   --          |   --
+`0x4A`      |   `74`        |   set temp to 74
+`0x4B`      |   `75`        |   set temp to 75
+other       |   other       |   ignored
 
-**For print done (`0xFD`):**
+**For print done (`0xFD` hex, `253` dec):**
 
-data    |   action
----     |---
-`0x00`  |   print not done
-`0x01`  |   print done
-other   |   ignored
+data (hex)  |   data (dec)  |   action
+---         |---            |---
+`0x00`      |   `0`         |   print not done
+`0x01`      |   `1`         |   print done
+other       |   other       |   ignored
 
-**For max fan speed (`0xFC`):**
+**For max fan speed (`0xFC` hex, `252` dec):**
 
-data    |   action
----     |---
-`0x00`  |   max fan speed to 0/255
-`0x01`  |   max fan speed to 1/255
---      |   --
-`0xFE`  |   max fan speed to 254/255
-`0xFF`  |   max fan speed to 255/255
+data (hex)  |   data (dec)  |   action
+---         |---            |---
+`0x00`      |   `0`         |   max fan speed to 0/255
+`0x01`      |   `1`         |   max fan speed to 1/255
+--          |   --          |   --
+`0xFE`      |   `254`       |   max fan speed to 254/255
+`0xFF`      |   `255`       |   max fan speed to 255/255
 
-**For light state (`0xFB`):**
+**For light state (`0xFB` hex, `251` dec):**
 
-data    |   action
----     |---
-`0x00`  |   lights on
-`0x01`  |   lights off
-`0x02`  |   lights change
-other   |   ignored
+data (hex)  |   data (dec)  |   action
+---         |---            |---
+`0x00`      |   `0`         |   lights on
+`0x01`      |   `1`         |   lights off
+`0x02`      |   `2`         |   lights change
+other       |   other       |   ignored
 
-**For print name (`0xFA`):**
+**For print name (`0xFA` hex, `250` dec):**
 
 This one is a bit different. Basically, each data byte represents one ASCII-encoded character in the print name. 
-Each of these characters are added, one at a time, to the print name in place of the first `NULL`.
+Each of these characters are added, one at a time, to the print name in place of the first `NULL`. 
+The print name is full of `NULL`s when empty, so basically each character is added to the end of the part of the name that is already there.
 
 Notes: 
 The print name is cleared after each print automatically. 
@@ -222,10 +223,10 @@ However, it is recommended to use only v2 commands.
 **On maximum transmission length:**
 
 The Marlin core used by the Prusa Buddy firmware has a limited I2C buffer size of 32 bytes; if you are sending many or long commands you may need to split them into multiple transmissions.
-Additionally, the enclosure code has only a 32-byte primary buffer for incoming data. 
-However, this buffer is flushed to a 256-byte circular buffer nearly immediately, so consecutive commands of up to 32 bytes *should* be fine.
+Additionally, the enclosure code has only a 32-byte primary buffer for incoming data, so longer transmissions wouldn't work. 
+However, this buffer is flushed to a 256-byte circular buffer nearly immediately, so consecutive commands of up to 32 bytes *should* be fine. 
+If you need more than 32 bytes, split it into multiple transmissions.
 
 ---
 
 **If you still have questions, or this document is incomplete, please submit an issue.**
-
