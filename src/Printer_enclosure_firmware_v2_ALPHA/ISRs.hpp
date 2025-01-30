@@ -107,6 +107,11 @@ inline void buttonBackup();
 inline void versionBackup();
 
 /**
+* @brief stores wether or not the system was in error mode on power loss
+*/
+inline void errorBackup();
+
+/**
 * @brief the ISR called when the POK pin on the PSU signals animanent power loss. if this is unexpected, will backup all settings and some other stuff to flash
 */
 void losingPower();

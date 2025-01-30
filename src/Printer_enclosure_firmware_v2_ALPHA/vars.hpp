@@ -38,6 +38,11 @@
 //  sets if debug messages will be sent. set to "true" for debuging messages, and to "false" for none (except if there is an error)
 #define debug true
 
+#define ERROR 0
+#define STANDBY 1
+#define COOLDOWN 2
+#define PRINTING 3
+
 //********************************************************************************************************************************************************************************
 
 //  pins (how did you wire everything up?):
@@ -91,9 +96,9 @@ const uint8_t fanPin = 0;  //  the pin connected to the vent fan | output
 const uint8_t majorVersion = 2;
 const uint8_t minorVersion = 0;
 const uint8_t bugFixVersion = 0;
-const uint8_t buildVersion = 16;  //  this might be useful if you make your own changes to the code
+const uint8_t buildVersion = 20;  //  this might be useful if you make your own changes to the code
 
-extern volatile bool lights_On_On_Door_Open;  //  controlls if the lights turn on when the door is opened.
+extern bool lights_On_On_Door_Open;  //  controlls if the lights turn on when the door is opened.
 extern volatile bool saveStateOnPowerLoss;
 
 extern volatile uint8_t nameScrollSpeed;  //  how fast the print name will scroll by (lower is faster, miliseconds per pixel)
@@ -102,6 +107,7 @@ extern volatile uint8_t fanOffVal;  //  the pwm value used when the fan should b
 extern volatile uint8_t fanMidVal;  //  the pwm value used when the fan should be halfway on
 extern volatile uint8_t fanOnVal;  //  the pwm value used when the fan should be all the way on
 extern volatile uint8_t defaultMaxFanSpeed;  //  the default maxumum fan speed (what will be used if nothing else is specified)
+extern volatile uint8_t hysteresis;  //  the "dead zone" value, the temp can get above or below the target by this much before action is taken
 extern volatile uint8_t bigDiff;  //  the value used to define a large temp difference (in deg. c.)
 extern volatile uint8_t cooldownDif;  //  if the inside and outside temps are within this value of eachother, cooldown() will go to standby()
 extern volatile uint8_t dimingTime;  //  this * 255 = the time (in miliseconds) that togling the lights will take
@@ -113,6 +119,8 @@ extern volatile uint8_t servo1Closed;  //  the "closed" position for servo 1
 extern volatile uint8_t servo2Closed;  //  the "closed" position for servo 2
 extern volatile uint8_t sensorReadInterval;  //  the minimum time (in s) between temp readings
 
+extern uint16_t screensaverTime; // how long without user input intil the screensave is displayed (s)
+
 extern volatile uint16_t fanKickstartTime; //  the time (in miliseconds) that the fan will be turned on at 100% before being set to its target value
 extern volatile uint16_t menuButtonHoldTime;  //  how long the "up" or "down" buttons need to be held for to be counted as being held (in miliseconds)
 
@@ -123,7 +131,7 @@ extern volatile uint8_t sensorReads;  //  the number of times the temp sensors w
 
 const uint16_t maxSerialStartupTries = 1000;  //  this is the number of tries (or the number of 10ms periods) that will be taken to connect to usb before giving up
 const uint16_t maxScreenStartupTries = 100;  //  this is the number of times that turning the screen on will be tried
-const uint16_t maxPSUOnTime = 5000;  //  the maximum time (in miliseconds) that the PSU can take to turn on before throwing an error
+const uint16_t maxPSUOnTime = 10000;  //  the maximum time (in miliseconds) that the PSU can take to turn on before throwing an error
 const uint16_t maxCoreOneShutdownTime = 2500;  //  the maximum time (in miliseconds) that the first core will wait for the second core (core1) to acknowledge an error and shut down before proceeding anyways
 const int16_t maxInOutTemp = 75;  //  the maximum temp the inside or outside of the enclosure can be before triggering an error
 const int16_t maxHeaterTemp = 90;  //  the maximum temp the heater can reach before triggering an error
@@ -137,7 +145,7 @@ const String errorCauses[] {"Unknown / invalid origin.", "Origin: Temp sensor ch
 
 const uint8_t numErrorCauses = sizeof(errorCauses) / sizeof(errorCauses[0]);
 
-const uint32_t maxI2CWaitTime = 2500000;  //  the maximum time (in microseconds) to wait for I2C resources to be available
+const uint32_t maxI2CWaitTime = 10000000;  //  the maximum time (in microseconds) to wait for I2C resources to be available
 const uint32_t serialSpeed = 250000;  //  the buad rate that will be used for serial communication
 const uint32_t serialTimout = 100;  //  the serial timout time, in miliseconds
 const uint32_t debounceTime = 25000;  //  this is the debounce delay, in microseconds (1μs = 1s/1,000,000)
@@ -173,20 +181,19 @@ extern uint32_t I2C_mutex_owner;
 extern mutex_t PSU_mutex;  //  a mutex to protect controling the PSU
 extern uint32_t PSU_mutex_owner;
 
-extern volatile bool tmp_bool;  //  a bool used to store the value of a menu item of the same datatype while it is being edited
-extern volatile uint8_t tmp_uint8t;  //  a byte used to store the value of a menu item of the same datatype while it is being edited
-extern volatile int8_t tmp_int8t;
-extern volatile uint16_t tmp_uint16t;
-extern volatile int16_t tmp_int16t;
-extern volatile uint32_t tmp_uint32t;
-extern volatile int32_t tmp_int32t;
+extern bool tmp_bool;  //  a bool used to store the value of a menu item of the same datatype while it is being edited
+extern uint8_t tmp_uint8t;  //  a byte used to store the value of a menu item of the same datatype while it is being edited
+extern int8_t tmp_int8t;
+extern uint16_t tmp_uint16t;
+extern int16_t tmp_int16t;
+extern uint32_t tmp_uint32t;
+extern int32_t tmp_int32t;
 
 extern volatile char printName[256];  //  an array of characters to store the print name
 
-extern volatile uint8_t I2cBuffer_readPos;  //  stores where to read from the buffer next
-extern volatile uint8_t I2cBuffer_numBytes;  //  stores the number of bytes to be read from the buffer
-
 extern volatile int32_t errorInfo;  //  records aditionall info about any posible errors
+
+extern bool findPressedState; // used during startup to track if the pressed state of the switches and buttons needs to be set
 
 #if manualPressedState  //  if we are seting the switches pressed state manually
 
@@ -199,24 +206,26 @@ const bool upSw_ps = LOW;
 const bool downSw_ps = LOW;
 
 #else  //  if we are seting the switches pressed state automatically
-extern volatile bool findPressedState;
 
-extern volatile bool doorSw_ps;
-extern volatile bool lightSw_ps;
-extern volatile bool coolDownSw_ps;
-extern volatile bool sellSw_ps;
-extern volatile bool upSw_ps;
-extern volatile bool downSw_ps;
+extern bool doorSw_ps;
+extern bool lightSw_ps;
+extern bool coolDownSw_ps;
+extern bool sellSw_ps;
+extern bool upSw_ps;
+extern bool downSw_ps;
 
 #endif
 
+extern bool screensaver; // tracks if the screensaver is active
 extern bool bootsel;
+extern bool hysteresisTriggered;  //  if the temp has risen above the target by the <hysteresis> amount
+extern bool fanWasOn;
 extern volatile bool turnLightOff;
 extern volatile bool core1StartStartup;
 extern volatile bool PSUIsOn;
 extern volatile bool checkI2c;
 extern volatile bool startupError;
-extern volatile bool dispLastLoop;  //  tracks if the print name was displayed last loop
+extern bool dispLastLoop;  //  tracks if the print name was displayed last loop
 extern volatile bool errorDetected;  //  tracks if an error has been detected (used to instruct the second core (core1) to shut down)
 extern volatile bool coreZeroShutdown;  //  tracks if the first core (core0) has safed everything and entered an infinite loop (used only when an error is detected)
 extern volatile bool coreOneShutdown;  //  tracks if the second core (core1) has stoped doing stuff and entered an infinite loop (used only when an error is detected)
@@ -226,12 +235,11 @@ extern volatile bool printDone;  //  tracks if the print is done (used to turn o
 extern volatile bool doorOpen;  //  tracks if the door is open
 extern volatile bool lightSetState;  //  tracks the state the lights should be in
 extern volatile bool changeLights;  //  tracks if the lights need to be changed (only used for printer-commanded changes)
-extern volatile bool editingMenuItem;  //  tracks wheather the sellected menu item is being edited
-extern volatile bool printingLastLoop;  //  tracks, basically, if the last loop went to printing() or not. used to avoid falsely seting heatingMode
-extern volatile bool heatingMode;  //  tracks if the enclosure is in heating or cooling mode (false = cooling, true = heating)
+extern bool editingMenuItem;  //  tracks wheather the sellected menu item is being edited
+extern bool heatingMode;  //  tracks if the enclosure is in heating or cooling mode (false = cooling, true = heating)
 
-extern volatile uint8_t selectedItem;  //  tracks the sellected menu item
-extern volatile uint8_t topDisplayItem;  //  tracks the menu item that is at the top of the display
+extern uint8_t selectedItem;  //  tracks the sellected menu item
+extern uint8_t topDisplayItem;  //  tracks the menu item that is at the top of the display
 extern volatile uint8_t mode;  //  tracks the enclosures operating mode (0 = error, 1 = standby, 2 = cooldown, 3 = printing)
 extern volatile uint8_t oldMode;  //  tracks the mode the enclosure was in last loop
 extern volatile uint8_t maxFanSpeed;  //  tracks the maximum fan speed alowable
@@ -247,6 +255,10 @@ extern uint8_t oldS2_Pos;  //  tracks the old position of servo 2
 extern int16_t heaterTemp;  //  tracks the heater temp
 extern int16_t inTemp;  //  tracks the temp inside the enclosure
 extern int16_t outTemp;  //  tracks the temp outside the enclosure
+
+extern uint32_t lastUserInput; // tracks when the last user input was
+
+extern uint32_t core1Time; // updated each loop of core1, keeps track of the time for that loop
 
 //********************************************************************************************************************************************************************************
 
@@ -519,9 +531,15 @@ class light {
     bool getState();
 
     /**
-    * @brief call as often as possible
+    * @brief call as often as possible, handels all actual setting of the light (diming, etc.)
     */
     void tick();
+
+    /**
+    * @brief breifly changes the state of the light, then revets to what it was again. Used to fix a hardware issue | EXPERIMENTAL
+    * @param microseconds the amount of time that the light's state will be inverted for
+    */
+    void blip(uint32_t microseconds);
 };
 
 //********************************************************************************************************************************************************************************

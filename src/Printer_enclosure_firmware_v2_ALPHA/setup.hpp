@@ -72,6 +72,11 @@ bool buttonRecovery();
 #endif
 
 /**
+* @brief returns true if the system was not in error, false if it was
+*/
+inline bool checkError();
+
+/**
 * @brief updates the data of all menu items from stored data
 */
 bool menuRecovery();

@@ -44,6 +44,11 @@ void printHeader();
 void printMenu(int32_t lower_Bound, int32_t uper_Bound, bool dispName);
 
 /**
+* @brief prints a screensaver on the entire screen
+*/
+void printScreensaver();
+
+/**
 * @brief the higher-level function called whenever the screen needs to be updated
 */
 void updateScreen();

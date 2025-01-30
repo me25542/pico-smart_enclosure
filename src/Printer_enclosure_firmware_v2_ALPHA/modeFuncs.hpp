@@ -25,6 +25,11 @@
 
 
 /**
+* @brief called every loop, regardless of mode
+*/
+void standard();
+
+/**
 * @brief the function called every loop when the mode is standby
 */
 const void standby();

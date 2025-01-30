@@ -30,11 +30,10 @@
 #include "otherFuncs.hpp"
 
 
-//  a simple function to blink the built-in LED
 void blinkLED(uint32_t blinkTime) {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("blinkLED(%lu) called from core%u.\n", blinkTime, core);  //  print a debug message over the sellected debug port
+  Serial.printf("blinkLED(%lu) called from core%u.\n", blinkTime, core);  //  print a debug message over the sellected debug port
   #endif
 
   digitalWrite(ledPin, HIGH);  //  turn on the built-in LED
@@ -49,7 +48,7 @@ bool useI2C(uint16_t timeout_id) {
   }
 
   if (i >= maxI2CWaitTime) {
-    mode = 0;
+    mode = ERROR;
     errorOrigin = 13;
     errorInfo = timeout_id;
     errorInfo = errorInfo << 16;
@@ -67,7 +66,7 @@ bool useI2C(uint16_t timeout_id, uint16_t timeout_info) {
   }
 
   if (i >= maxI2CWaitTime) {
-    mode = 0;
+    mode = ERROR;
     errorOrigin = 13;
     errorInfo = timeout_id;
     errorInfo = errorInfo << 16;
@@ -83,11 +82,10 @@ void doneWithI2C() {
   mutex_exit(&I2C_mutex);
 }
 
-//  the function that checks if a given I2C device is connected
 bool isI2CDeviceConnected(uint8_t address) {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("isI2CDeiceConnected(%u) called from core%u.\n", address, core);  //  print a debug message over the sellected debug port
+  Serial.printf("isI2CDeiceConnected(%u) called from core%u.\n", address, core);  //  print a debug message over the sellected debug port
   #endif
 
   uint16_t i;
@@ -105,17 +103,16 @@ bool isI2CDeviceConnected(uint8_t address) {
   doneWithI2C();
 
   #if debug
-  printf("isI2CDeviceConnected returned: %d\n", isNotError);  //  print a debug message over the sellected debug port
+  Serial.printf("isI2CDeviceConnected returned: %d\n", isNotError);  //  print a debug message over the sellected debug port
   #endif
 
   return isNotError;  //  this will make the function return true if there were no errors, false otherwise
 }
 
-//  the function that checks if all sensors are connected
 bool areSensorsPresent() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("areSensorsPreasent() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("areSensorsPreasent() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
 
   bool sensorNotConnected = false;
@@ -128,7 +125,7 @@ bool areSensorsPresent() {
     }
 
     if (i >= 255) {
-      mode = 0;
+      mode = ERROR;
       errorOrigin = 6;
       errorInfo = 1;
       sensorNotConnected = true;
@@ -143,7 +140,7 @@ bool areSensorsPresent() {
     }
 
     if (i >= 255) {
-      mode = 0;
+      mode = ERROR;
       errorOrigin = 6;
       errorInfo = 2;
       sensorNotConnected = true;
@@ -158,7 +155,7 @@ bool areSensorsPresent() {
     }
 
     if (i >= 255) {
-      mode = 0;
+      mode = ERROR;
       errorOrigin = 6;
       errorInfo = 3;
       sensorNotConnected = true;
@@ -168,17 +165,16 @@ bool areSensorsPresent() {
   bool allSensorsConnected = ! sensorNotConnected;
 
   #if debug
-  printf("areSensorsPreasent() returned: %d\n", allSensorsConnected);  //  print a debug message over the sellected debug port
+  Serial.printf("areSensorsPreasent() returned: %d\n", allSensorsConnected);  //  print a debug message over the sellected debug port
   #endif
 
   return allSensorsConnected;
 }
 
-//  checks if the screen is connected
 bool isScreenConnected() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("isScreenConnected() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("isScreenConnected() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
 
   {
@@ -189,7 +185,7 @@ bool isScreenConnected() {
     }
 
     if (i >= 255) {
-      mode = 0;
+      mode = ERROR;
       errorOrigin = 12;
       errorInfo = SCREEN_ADDRESS;
       return false;
@@ -200,48 +196,47 @@ bool isScreenConnected() {
   }
 }
 
-
-//  the function to set the state of the PSU (on or off) | returns true on sucess, false on failure
 bool setPSU(bool state) {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("setPSU(%d) called from core%u.\n", state, core);  //  print a debug message over the sellected debug port
+  Serial.printf("setPSU(%d) called from core%u.\n", state, core);  //  print a debug message over the sellected debug port
   #endif
 
-  for (uint32_t i = 0; !mutex_try_enter(&PSU_mutex, &PSU_mutex_owner); i++);  //  wait for any other instances of this function (the other core?) to be done
+  mutex_enter_blocking(&PSU_mutex);  //  wait for any other instances of this function (the other core?) to be done
 
   digitalWrite(psPin, state);  //  set the power state of the PSU
 
   if (state) {  //  if we are turning the PSU on
     uint16_t i;
-    for (i = 0; ((digitalRead(pokPin) != state) && (i < maxPSUOnTime)); i++) {  //  wait for the PSU to report the power state is the same as requested
+    for (i = 0; ((!digitalRead(pokPin)) && (i < maxPSUOnTime)); i++) {  //  while the PSU hasn't reported that the power state is the same as requested
       delay(1);  //  wait for one milisecond
+      digitalWrite(psPin, HIGH);  //  tell the PSU to turn on | maybe this will fix the bug?
     }
 
     if (i < maxPSUOnTime) {
-      PSUIsOn = state;
+      PSUIsOn = true;
       mutex_exit(&PSU_mutex);  //  let any other instance of this function (the other core?) know that we are done
       return true;
 
     } else {
-      mode = 0;  //  set mode to error
+      mode = ERROR;  //  set mode to error
       errorOrigin = 9;  //  record what caused the error
       errorInfo = state;  //  record some info about the error
       mutex_exit(&PSU_mutex);  //  let any other instance of this function (the other core?) know that we are done
       return false;
     }
 
-  } else {
+  } else {  //  if we are turning the PSU off
+    PSUIsOn = false;
     mutex_exit(&PSU_mutex);  //  let any other instance of this function (the other core?) know that we are done
     return true;
   }
 }
 
-//  the function to set the position of the servos
 void setServos(uint8_t s1_Pos, uint8_t s2_Pos) {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("setServos(%u, %u) called from core%u.\n", s1_Pos, s2_Pos, core);  //  print a debug message over the sellected debug port
+  Serial.printf("setServos(%u, %u) called from core%u.\n", s1_Pos, s2_Pos, core);  //  print a debug message over the sellected debug port
   #endif
 
   servo1.write(s1_Pos);  //  set the position of servo1
@@ -253,74 +248,72 @@ void setServos(uint8_t s1_Pos, uint8_t s2_Pos) {
   oldS2_Pos = s2_Pos;  //  record the state of the servos
 }
 
-//  the function to set the state of both heaters, and the fan (the temp-related stuff)
 void setHeaters(bool h1_On, bool h2_On, uint8_t fanVal) {
-  static bool fanWasOn = false;
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("setHeaters(%d, %d, %u) called from core%u.\n", h1_On, h2_On, fanVal, core);  //  print a debug message over the sellected debug port
+  Serial.printf("setHeaters(%d, %d, %u) called from core%u.\n", h1_On, h2_On, fanVal, core);  //  print a debug message over the sellected debug port
   #endif
+
+  static bool h1_isOn = false;
+  static bool h2_isOn = false;
 
   if (doorOpen) {
     #if debug
-    printf("setHeaters() will turn everything off; the door is open.\n");  //  print a debug message over the sellected debug port
+    Serial.printf("setHeaters() will turn everything off; the door is open.\n");  //  print a debug message over the sellected debug port
     #endif
 
     h1_On = false;
     h2_On = false;
+
+    #if fanOn
     fanVal = 0;
+    #else
+    fanVal = 255;
+    #endif
+
   } else {
     #if debug
-    printf("setHeaters() will do as requested; the door is closed.\n");  //  print a debug message over the sellected debug port
+    Serial.printf("setHeaters() will do as requested; the door is closed.\n");  //  print a debug message over the sellected debug port
     #endif
   }
 
-  digitalWrite(heater1Pin, ! h1_On);  //  set the value of heater1
-  digitalWrite(heater2Pin, ! h2_On);  //  set the value of heater2
+  digitalWrite(heater1Pin, !h1_On);  //  set the value of heater1
+  digitalWrite(heater2Pin, !h2_On);  //  set the value of heater2
+
+  if ((h1_On != h1_isOn) || (h2_On != h2_isOn)) { // if we are turning the heaters off or on (if the state of the heaters is changing)
+    mainLight.blip(25000); // bypass a hardware issue
+  }
+
+  h1_isOn = h1_On;
+  h2_isOn = h2_On;
 
   if (fanVal) {  //  if the fan is being set to something other than 0:
-    if (!fanWasOn) {
-      fanWasOn = true;
-      #if fanOn  //  if the fan is on with a HIGH output
-
-      digitalWrite(fanPin, HIGH);  //  turn the fan on at 100%
-
-      #else  //  if the fan is on with a LOW output
-      digitalWrite(fanPin, LOW);  //  turn the fan on at 100%
-
-      #endif
-      delay(fanKickstartTime);  //  and wait for a bit to let it spin up
-    }
-
     setServos(servo1Open, servo2Open);  //  move the servos to open
     
-    #if fanOn  //  if the fan is on with a HIGH output
-
+    if (!fanWasOn) {
+      fanWasOn = true;
+      analogWrite(fanPin, 255);  //  turn the fan on at 100%
+      delay(fanKickstartTime);  //  and wait for a bit to let it spin up
+    }
+    
     analogWrite(fanPin, min(fanVal, maxFanSpeed));  //  then set the fan speed to its target value or the maximum fan speed, whichever is less
-
-    #else  //  if the fan is on with a LOW output
-    analogWrite(fanPin, !min(fanVal, maxFanSpeed));  //  then set the fan speed to its target value or the maximum fan speed, whichever is less
-
-    #endif
 
   } else {  //  if the fan is being set to 0:
     fanWasOn = false;
     setServos(servo1Closed, servo2Closed);  //  move the servos to closed
-    digitalWrite(fanPin, LOW);  //  turn the fan off
+    digitalWrite(fanPin, !fanOn);  //  turn the fan off
   }
 }
 
-//  the function that starts serial (USB) comunication (takes ~10ms) | returns 1 if a computer is connected, 0 if not
 bool startSerial() {
   Serial.begin(serialSpeed);  //  start serial (over USB) with a baud rate of 115200
   return Serial;  //  send back to the calling function if serial is connected
 }
 
-// the function that gets all temp sensor data | returns 0 on failure, 1 on sucess
 bool getTemp() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("getTemp() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("getTemp() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
   
   static volatile uint32_t lastReadTime = 120000;
@@ -329,7 +322,7 @@ bool getTemp() {
     lastReadTime = millis();  //  update the time
 
     #if debug
-    printf("It has been long enough between temp readings, reading the temp...\n");
+    Serial.printf("It has been long enough between temp readings, reading the temp...\n");
     #endif
 
     if (!areSensorsPresent()) {  //  check if any sensors were disconnected (We don't want to waste time if sensors are disconnected)
@@ -374,7 +367,7 @@ bool getTemp() {
       doneWithI2C();
 
       if (tHeaterTemp <= minTemp || tHeaterTemp >= maxHeaterTemp) {  //  if it is not within the acceptable range
-        mode = 0;  //  set the mode to error
+        mode = ERROR;  //  set the mode to error
         errorOrigin = 1;  //  record what caused the error
 
         //  record both the sensor that caused the error, and the value it read, all in one variable
@@ -395,7 +388,7 @@ bool getTemp() {
       doneWithI2C();
 
       if (tInTemp <= minTemp || tInTemp >= maxInOutTemp) {  //  if it is not within the acceptable range
-        mode = 0;  //  set the mode to error
+        mode = ERROR;  //  set the mode to error
         errorOrigin = 1;  //  record what caused the error
 
         //  record both the sensor that caused the error, and the value it read, all in one variable
@@ -416,7 +409,7 @@ bool getTemp() {
       doneWithI2C();
 
       if (tOutTemp <= minTemp || tOutTemp >= maxInOutTemp) {  //  if it is not within the acceptable range
-        mode = 0;  //  set the mode to error
+        mode = ERROR;  //  set the mode to error
         errorOrigin = 1;  //  record what caused the error
 
         //  record both the sensor that caused the error, and the value it read, all in one variable
@@ -440,19 +433,21 @@ bool getTemp() {
     
     doneWithI2C();
 
-    heaterTemp = tempHeaterTemp / sensorReads;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
-    inTemp = tempInTemp / sensorReads;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
-    outTemp = tempOutTemp / sensorReads;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
+    uint8_t offset = sensorReads >> 1; // this is the same as sensorReads / 2, just more eficient. Used because, on average, each individual sensor reading is low by 0.5 degrees
+
+    heaterTemp = (tempHeaterTemp / sensorReads) + offset;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
+    inTemp = (tempInTemp / sensorReads) + offset;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
+    outTemp = (tempOutTemp / sensorReads) + offset;  //  set the temperature to the temporary variable devided by the number of times the temperature was read
 
     #if debug
-    printf("Heater temp: %d. | In temp: %d. | Out temp: %d.\n", heaterTemp, inTemp, outTemp);  //  print a debug message over the sellected debug port
+    Serial.printf("Heater temp: %d. | In temp: %d. | Out temp: %d.\n", heaterTemp, inTemp, outTemp);  //  print a debug message over the sellected debug port
     #endif
 
     return true;
 
   } else {  //  if it hasn't been long enough sience the last temp reading
     #if debug
-    printf("It hasn't been long enough between temp readings, not reading the temp.\n");
+    Serial.printf("It hasn't been long enough between temp readings, not reading the temp.\n");
     #endif
 
     return true;
@@ -462,31 +457,29 @@ bool getTemp() {
 void lightswitchPressed() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("lightswitchPressed() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("lightswitchPressed() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
 
   turnLightOff = false;
 
   lightSetState = !lightSetState;  //  change the state of the lights in logic
 
-  mainLight.changeState();
+  mainLight.setState(lightSetState);
 }
 
-//  the functoin called when a manual cooldown is triggered (the cooldown button is released):
 void manualCooldown() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("manualCooldown() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("manualCooldown() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
 
-  mode = 2;  //  set the mode to cooldown
+  mode = COOLDOWN;  //  set the mode to cooldown
 }
 
-//  the function called when the door opens (the door switch is released):
 void doorOpening() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("doorOpening() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("doorOpening() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
 
   doorOpen = true;  //  remember the door is open
@@ -498,9 +491,9 @@ void doorOpening() {
     mainLight.setState(true);  //  turn on the lights
   }
 
-  if (mode != 3 && printName[0] != 0) {  //  if the mode is not printing and the print name isn't empty (well, technically if the first character of the print name isn'y NULL)
+  if (mode != PRINTING && printName[0] != 0) {  //  if the mode is not printing and the print name isn't empty (well, technically if the first character of the print name isn'y NULL)
     #if debug
-    printf("clearing the print name.\n");  //  print a debug message over the sellected debug port
+    Serial.printf("clearing the print name.\n");  //  print a debug message over the sellected debug port
     #endif
 
     for (uint16_t i = 0; i < 256; i++) {  //  go through all the characters in the print name
@@ -511,15 +504,14 @@ void doorOpening() {
   setHeaters(false, false, 0);  //  turn off both heaters and the fan
 
   #if debug
-  printf("Door open.\n");  //  print a debug message over the sellected debug port
+  Serial.printf("Door open.\n");  //  print a debug message over the sellected debug port
   #endif
 }
 
-//  the function called when the door closes (the door switch is pressed):
 void doorClosing() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("doorClosing() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("doorClosing() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
 
   if (turnLightOff) {  //  if the lights should turn off
@@ -531,16 +523,17 @@ void doorClosing() {
   printDone = false;  //  the print might have been removed; remember that the print is not done
 
   #if debug
-  printf("Door closed.\n");  //  print a debug message over the sellected debug port
+  Serial.printf("Door closed.\n");  //  print a debug message over the sellected debug port
   #endif
 }
 
-//  checks if the buttons have been pressed or relesed, and calls the correct functions based on the state of the buttons
 void checkButtons() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("checkButtons() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("checkButtons() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
+
+  bool input = false; // tracks if user input was detected
 
   //  update the buttons
   door_switch.update();
@@ -549,23 +542,43 @@ void checkButtons() {
 
   if (door_switch.pressed()) {
     doorClosing();
+    input = true;
+
   } else if (door_switch.released()) {
     doorOpening();
+    input = true;
   }
 
   if (light_switch.released()) {
     #if debug
-    printf("Light switch pressed.\n");  //  print a debug message over the sellected debug port
+    Serial.printf("Light switch pressed.\n");  //  print a debug message over the sellected debug port
     #endif
 
     lightswitchPressed();
+
+    input = true;
   }
 
-  if (coolDown_switch.isPressed() && coolDown_switch.currentDuration() >= cooldownSwitchHoldTime) {  //  if the cooldown switch was just relesed and was previusly held for over a set length of time:
-    #if debug
-    printf("Cooldown switch pressed.\n");  //  print a debug message over the sellected debug port
-    #endif
+  static bool cdSwitchWasPressed = false;  //  this variable makes it so that cooldown is triggered only once per button press and hold
 
-    manualCooldown();  //  set mode to cooldown
+  if (coolDown_switch.isPressed()) {  //  if the cooldown switch was just relesed and was previusly held for over a set length of time:
+    if ((coolDown_switch.currentDuration() >= cooldownSwitchHoldTime) && !cdSwitchWasPressed) {
+      #if debug
+      Serial.printf("Cooldown switch pressed.\n");  //  print a debug message over the sellected debug port
+      #endif
+
+      cdSwitchWasPressed = true;
+
+      manualCooldown();  //  set mode to cooldown
+    }
+
+    input = true;
+
+  } else {
+    cdSwitchWasPressed = false;
+  }
+
+  if (input) {
+    lastUserInput = core1Time;
   }
 }

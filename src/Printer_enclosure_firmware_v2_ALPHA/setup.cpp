@@ -47,7 +47,7 @@ void varInit() {
 
 void servoSetup() {
   #if debug
-  printf("servoSetup() called.\n");  //  print a debug message over the sellected debug port
+  Serial.printf("servoSetup() called.\n");  //  print a debug message over the sellected debug port
   #endif
 
   //  start servos:
@@ -59,13 +59,13 @@ void servoSetup() {
   servo2.write(servo2Closed);
 
   #if debug
-  printf("Exiting servoSetup().\n");
+  Serial.printf("Exiting servoSetup().\n");
   #endif
 }
 
 bool tempSensorSetup() {
   #if debug
-  printf("tempSensorSetup() called.\n");  //  print a debug message over the sellected debug port
+  Serial.printf("tempSensorSetup() called.\n");  //  print a debug message over the sellected debug port
   #endif
 
   useI2C(1);
@@ -84,7 +84,7 @@ bool tempSensorSetup() {
     errorInfo = 1;  //  record which sensor is at fault
 
     #if debug
-    printf("Starting the heater sensor failed.\n");  //  print a debug message over the sellected debug port
+    Serial.printf("Starting the heater sensor failed.\n");  //  print a debug message over the sellected debug port
     #endif
 
     doneWithI2C();
@@ -98,7 +98,7 @@ bool tempSensorSetup() {
     errorInfo = 2;  //  record which sensor is at fault
 
     #if debug
-    printf("Starting the in temp sensor failed.\n");  //  print a debug message over the sellected debug port
+    Serial.printf("Starting the in temp sensor failed.\n");  //  print a debug message over the sellected debug port
     #endif
 
     doneWithI2C();
@@ -112,7 +112,7 @@ bool tempSensorSetup() {
     errorInfo = 3;  //  record which sensor is at fault
 
     #if debug
-    printf("Starting the out temp sensor failed.\n");  //  print a debug message over the sellected debug port
+    Serial.printf("Starting the out temp sensor failed.\n");  //  print a debug message over the sellected debug port
     #endif
 
     doneWithI2C();
@@ -131,14 +131,14 @@ bool tempSensorSetup() {
   if (areSensorsPresent() && getTemp()) {  //  if the sensors are preasant AND geting the temperature was sucessfull | these will both handel I2C availability themselves
 
     #if debug
-    printf("Sensor startup sucessful.\n");  //  print a debug message over the sellected debug port
+    Serial.printf("Sensor startup sucessful.\n");  //  print a debug message over the sellected debug port
     #endif
 
     return true;
 
   } else {
     #if debug
-    printf("Sensor startup failed.\n");  //  print a debug message over the sellected debug port
+    Serial.printf("Sensor startup failed.\n");  //  print a debug message over the sellected debug port
     #endif
 
     return false;
@@ -147,7 +147,7 @@ bool tempSensorSetup() {
 
 void printerI2cSetup() {
   #if debug
-  printf("printerI2cSetup()called.\n");  //  print a debug message over the sellected debug port
+  Serial.printf("printerI2cSetup()called.\n");  //  print a debug message over the sellected debug port
   #endif
 
   //  start I2C1 (the priter's bus):
@@ -158,13 +158,13 @@ void printerI2cSetup() {
   Wire1.onReceive(I2cReceived);  //  set the function to call when the printer sends data via I2C
 
   #if debug
-  printf("Exiting printerI2cSetup().\n");
+  Serial.printf("Exiting printerI2cSetup().\n");
   #endif
 }
 
 void buttonSetup() {
   #if debug
-  printf("buttonSetup() called.\n");
+  Serial.printf("buttonSetup() called.\n");
   #endif
 
   //  set switch pinModes
@@ -214,13 +214,13 @@ void buttonSetup() {
   doorOpen = !door_switch.isPressed();  //  for startup after power loss, just going by state changes dosn't work
 
   #if debug
-  printf("Exiting buttonSetup().\n");
+  Serial.printf("Exiting buttonSetup().\n");
   #endif
 }
 
 void pinSetup() {
   #if debug
-  printf("pinSetup() called.\n");  //  print a debug message over the sellected debug port
+  Serial.printf("pinSetup() called.\n");  //  print a debug message over the sellected debug port
   #endif
   
   //  Pin definitions:
@@ -241,16 +241,16 @@ void pinSetup() {
   digitalWrite(heater1Pin, HIGH);  //  turn off heater 1
   digitalWrite(heater2Pin, HIGH);  //  turn off heater 2
   digitalWrite(fanPin, LOW);  //  turn off the fan
-  digitalWrite(psPin, HIGH);  //  turn on the power supply
+  digitalWrite(psPin, LOW);  //  turn off the power supply
 
   #if debug
-  printf("Exiting pinSetup().\n");
+  Serial.printf("Exiting pinSetup().\n");
   #endif
 }
 
 bool menuSetup() {
   #if debug
-  printf("menuSetup() called.\n");  //  print a debug message over the sellected debug port
+  Serial.printf("menuSetup() called.\n");  //  print a debug message over the sellected debug port
   #endif
 
   useI2C(9);
@@ -263,7 +263,7 @@ bool menuSetup() {
     errorOrigin = 10;
 
     #if debug
-    printf("Starting screen failed.\n");  //  print a debug message over the sellected debug port
+    Serial.printf("Starting screen failed.\n");  //  print a debug message over the sellected debug port
     #endif
 
     doneWithI2C();
@@ -321,11 +321,15 @@ bool buttonRecovery() {
 }
 #endif
 
+inline bool checkError() {
+  return EEPROM.read(5) == 255; // return true only if the stored value is 255
+}
+
 bool menuRecovery() {
   bool useMenuData = static_cast<bool>(EEPROM.read(0));
 
   if (useMenuData) {
-    uint16_t memAdr = 1024;  //  start with the adress at the start of the second kb of memory
+    uint16_t memAdr = 1023;  //  start with the adress at the start of the second kb of memory
 
     for (uint8_t i = 0; i < menuLength; i++) {
       switch (mainMenu[i].getDataType()) {
@@ -427,7 +431,7 @@ bool menuRecovery() {
 
 void backupRecovery() {
   #if debug
-  printf("backupRecovery() called.\n");
+  Serial.printf("backupRecovery() called.\n");
   #endif
 
   EEPROM.begin(2048);  //  2048 because we have 1kb (1024b) for data, and I wanted a nice number of bytes to be used (we use like 10 of the remaining 1024 for version info and if to use the data)
@@ -437,20 +441,22 @@ void backupRecovery() {
     buttonRecovery();
     #endif
 
-    menuRecovery();
+    if (checkError()) { // if the mode wasn't error on backup
+      menuRecovery(); // recover the stored menu data
+    }
   }  //  if (checkVersion)
 }  //  void backupRecovery()
 
 void serialSetup() {
   #if debug
-  printf("serialSetup() called.\n");  //  print a debug message over the sellected debug port
+  Serial.printf("serialSetup() called.\n");  //  print a debug message over the sellected debug port
   #endif
   
   for (uint16_t serialStartupTries = 0; serialStartupTries < maxSerialStartupTries && !startSerial(); ++ serialStartupTries);  //  start serial (USB) comunication (and wait for up to one second for a computer to be connected)
   Serial.setTimeout(serialTimout);  //  set the serial timout time
 
   #if debug
-  printf("Exiting serialSetup().\n");
+  Serial.printf("Exiting serialSetup().\n");
   #endif
 }
 

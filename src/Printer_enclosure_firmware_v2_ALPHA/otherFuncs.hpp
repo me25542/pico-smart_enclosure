@@ -73,7 +73,7 @@ bool setPSU(bool state);
 void setServos(uint8_t s1_Pos, uint8_t s2_Pos);
 
 /**
-* @brief sets the state of booth heaters, and the fan (the temp-related stuff)
+* @brief sets the state of both heaters, and the fan (the temp-related stuff)
 */
 void setHeaters(bool h1_On, bool h2_On, uint8_t fanVal);
 

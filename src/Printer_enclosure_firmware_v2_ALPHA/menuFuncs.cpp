@@ -32,7 +32,7 @@
 void clearName() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("clearName() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("clearName() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
 
   for (uint8_t i = 0; i != 255; i++) {
@@ -40,11 +40,10 @@ void clearName() {
   }
 }
 
-  //  chat's (testing)
 void scrollName(uint8_t height) {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("scrollName(%u) called from core%u.\n", height, core);  // print a debug message over the selected debug port
+  Serial.printf("scrollName(%u) called from core%u.\n", height, core);  // print a debug message over the selected debug port
   #endif
 
   static uint8_t pos = 6;
@@ -96,14 +95,14 @@ void printHeader() {
   display.print(modeStrings[mode]);  //  print the mode (formated in a lovely string, not a number)
 
   switch (mode) {
-    case 3:  //  if the mode is printing
+    case PRINTING:  //  if the mode is printing
       display.setCursor(whereToPrintTemp, 0);  //  move the cursor to near the right-hand side of the display (still at the top)
       display.print(static_cast<int8_t>(inTemp));  //  print the inside temperature
       display.print("/");  //  realy? you can't figure this one out? it prints a "/"
       display.print(globalSetTemp);  //  print the target temperature (the set temp)
       break;
     
-    case 2:  //  if the mode is cooldown
+    case COOLDOWN:  //  if the mode is cooldown
       display.setCursor(whereToPrintTemp, 0);  //  move the cursor to near the right-hand side of the display (still at the top)
       display.print(static_cast<int8_t>(inTemp));  //  print the inside temperature
       display.print("/");  //  realy? you can't figure this one out? it prints a "/"
@@ -124,7 +123,7 @@ void printHeader() {
 void printMenu(uint8_t startHeight, uint8_t lower_Bound, uint8_t uper_Bound) {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("printMenu(%u, %u, %u) called from core%u.\n", startHeight, lower_Bound, uper_Bound, core);  //  print a debug message over the sellected debug port
+  Serial.printf("printMenu(%u, %u, %u) called from core%u.\n", startHeight, lower_Bound, uper_Bound, core);  //  print a debug message over the sellected debug port
   #endif
 
   uint8_t vertPos = startHeight;  //  set the vertical cursor position (used later)
@@ -225,7 +224,7 @@ void printMenu(uint8_t startHeight, uint8_t lower_Bound, uint8_t uper_Bound) {
       
       default: {  //  if it isn't any of those (something went wrong)
         display.print("-");  //  print a "-" (duh)
-        mode = 0;  //  set the mode to error
+        mode = ERROR;  //  set the mode to error
         errorOrigin = 11;  //  record why
         errorInfo = dataType;
         break;  //  exit the switch... case statement
@@ -236,44 +235,73 @@ void printMenu(uint8_t startHeight, uint8_t lower_Bound, uint8_t uper_Bound) {
   }  //  FOR loop
 }  //  printMenu()
 
+void printScreensaver() {
+  static uint8_t vert = 0;
+  static uint8_t horiz = 0;
+
+  if ((horiz + 1) >= screen_width) { // if we would go off the right edge of the screen
+    horiz = 0; // reset horizontal placement
+
+    if ((vert + 1) >= screen_height) { // if we would go off the bottom edge of the screen
+      vert = 0; // reset vertical position
+
+    } else {
+      vert += 1; // move down one pixel
+    }
+
+  } else {
+    horiz += 1;
+  }
+
+  display.writePixel(static_cast<int16_t>(horiz), static_cast<int16_t>(vert), SSD1306_WHITE); // print a single pixel
+}
+
 void updateScreen() {
   uint8_t startPos = 0;  //  where to start printing the main menu
   uint8_t fVisibleMenuItems;  //  a variable to store the functionall number of visible menu items (we will set this shortly)
   bool showName;  //  a variable to store if we should display the print name (we will set this shortly)
 
-  if ((mode == 3 || printDone) && (printName[0] != 0)) {  //  if (we are printing OR if the print is done (and the door hasen't been opened)) AND the first character in the print name isn't NULL
-    fVisibleMenuItems = visibleMenuItems - 1;  //  set the visible number of menu items to one less than normal
-    showName = true;  //  show the print name
-
-  } else {  //  if we arn't printing and the print is not done
-    fVisibleMenuItems = visibleMenuItems;  //  set the visible number of menu items to the normal number
-    showName = false;  //  don't show the print name
-  }
-
-  uint8_t minTopItem = (menuLength - fVisibleMenuItems);  //  find the lowest down menu item that can be on top
-  uint8_t topDisplayMenuItem = min(selectedItem, minTopItem);  //  find the menu item that should be on top (the lowest down one that can be, or the sellected one, wichever is higher)
-  uint8_t bottomDisplayMenuItem = topDisplayMenuItem + fVisibleMenuItems;  //  find the bottom visible menu item (the one that should be on the bottom)
-
   display.clearDisplay();  //  clear the dispaly's buffer
 
-  printHeader();
+  if ((mode == STANDBY) && ((core1Time - lastUserInput) > (screensaverTime * 1000))) {
+    screensaver = true;
+    printScreensaver();
 
-  startPos = 16;  //  the header takes up 16 pixels in height
+  } else {
+    screensaver = false;
 
-  if (showName) {  //  if we are displaying the print name
-    scrollName(startPos);  //  do the scroll name function, it will handel, well, scrolling the print name
-    dispLastLoop = true;
-    startPos += lineSpacing;  //  move the vertical position
+    if ((mode == PRINTING || printDone) && (printName[0] != 0)) {  //  if (we are printing OR if the print is done (and the door hasen't been opened)) AND the first character in the print name isn't NULL
+      fVisibleMenuItems = visibleMenuItems - 1;  //  set the visible number of menu items to one less than normal
+      showName = true;  //  show the print name
 
-  } else {  //  if we are not displaying the print name
-    if (dispLastLoop) {
-      clearName();  //  clear the name
+    } else {  //  if we arn't printing and the print is not done, or if there is no print name to display
+      fVisibleMenuItems = visibleMenuItems;  //  set the visible number of menu items to the normal number
+      showName = false;  //  don't show the print name
     }
 
-    dispLastLoop = false;
-  }
+    uint8_t minTopItem = (menuLength - fVisibleMenuItems);  //  find the lowest down menu item that can be on top
+    uint8_t topDisplayMenuItem = min(selectedItem, minTopItem);  //  find the menu item that should be on top (the lowest down one that can be, or the sellected one, wichever is higher)
+    uint8_t bottomDisplayMenuItem = topDisplayMenuItem + fVisibleMenuItems;  //  find the bottom visible menu item (the one that should be on the bottom)
 
-  printMenu(startPos, topDisplayMenuItem, bottomDisplayMenuItem);  //  display the visible part of the menu, and the print name, if aplicable
+    printHeader();
+
+    startPos = 16;  //  the header takes up 16 pixels in height
+
+    if (showName) {  //  if we are displaying the print name
+      scrollName(startPos);  //  do the scroll name function, it will handel, well, scrolling the print name
+      dispLastLoop = true;
+      startPos += lineSpacing;  //  move the vertical position
+
+    } else {  //  if we are not displaying the print name
+      if (dispLastLoop) {
+        clearName();  //  clear the name
+      }
+
+      dispLastLoop = false;
+    }
+
+    printMenu(startPos, topDisplayMenuItem, bottomDisplayMenuItem);  //  display the visible part of the menu, and the print name, if aplicable
+  }
 
   useI2C(8);
 
@@ -286,7 +314,7 @@ void updateScreen() {
 void sell_switch_Pressed() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("sell_switch_Pressed() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("sell_switch_Pressed() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
 
   if (editingMenuItem) {  //  if we are currently editing a item on the menu (before the button was pressed)
@@ -322,7 +350,7 @@ void sell_switch_Pressed() {
         break;  //  exit the switch... case statement
       
       default:  //  if the we can't find the data type (something is wrong)
-        mode = 0;  //  set the mode to error
+        mode = ERROR;  //  set the mode to error
         errorOrigin = 11;  //  record why
         break;  //  exit the switch... case statement
     }  //  switch... case
@@ -362,7 +390,7 @@ void sell_switch_Pressed() {
         break;  //  exit the switch... case statement
       
       default:  //  if we couldn't find the datatype (somethings wrong)
-        mode = 0;  //  set the mode to error
+        mode = ERROR;  //  set the mode to error
         errorOrigin = 11;  //  record why
         break;  //  exit the switch... case statement
     }  //  switch... case
@@ -373,7 +401,7 @@ void sell_switch_Pressed() {
 void up_switch_Pressed() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("up_switch_Pressed() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("up_switch_Pressed() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
 
   if (editingMenuItem) {  //  if we are editing the data pointed to by an item
@@ -435,7 +463,7 @@ void up_switch_Pressed() {
         break;  //  exit the switch... case statement
 
       default:  //  if we couldn't find the datatype (somethings wrong)
-        mode = 0;  //  set the mode to error
+        mode = ERROR;  //  set the mode to error
         errorOrigin = 11;  //  record why
         break;  //  exit the switch... case statement
     }  //  switch... case
@@ -452,7 +480,7 @@ void up_switch_Pressed() {
 void down_switch_Pressed() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("down_switch_Pressed() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("down_switch_Pressed() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
 
   if (editingMenuItem) {  //  if we are editing the data pointed to by an item
@@ -514,7 +542,7 @@ void down_switch_Pressed() {
         break;  //  exit the switch... case statement
 
       default:  //  if we couldn't find the datatype (somethings wrong)
-        mode = 0;  //  set the mode to error
+        mode = ERROR;  //  set the mode to error
         errorOrigin = 11;  //  record why
         break;  //  exit the switch... case statement
     }  //  switch... case
@@ -530,8 +558,10 @@ void down_switch_Pressed() {
 void checkMenuButtons() {
   #if debug
   uint8_t core = rp2040.cpuid();
-  printf("checkMenuButtons() called from core%u.\n", core);  //  print a debug message over the sellected debug port
+  Serial.printf("checkMenuButtons() called from core%u.\n", core);  //  print a debug message over the sellected debug port
   #endif
+
+  bool input = false; // tracks if user input was detected
 
   //  update the switches
   sell_switch.update();
@@ -539,22 +569,50 @@ void checkMenuButtons() {
   down_switch.update();
 
   if (sell_switch.released()) {  //  if the "sell." button was released sience the last update
-    sell_switch_Pressed();  //  call a function (can you guess which one?)
+    if (!screensaver) {
+      sell_switch_Pressed();  //  call a function (can you guess which one?)
+    }
+    input = true;
   }
 
   if (up_switch.released()) {  //  if the "up" button was released sience the last update
-    up_switch_Pressed();  //  call a function (can you guess which one?)
+    if (!screensaver) {
+      up_switch_Pressed();  //  call a function (can you guess which one?)
+    }
+    input = true;
 
   } else if (up_switch.isPressed() && (up_switch.currentDuration() >= menuButtonHoldTime)) {  //  otherwise (if the switch wasn't released sience the last update), if the switch is pressed and has been for a set length of time
-    up_switch_Pressed();  //  call a function (can you guess which one?)
-    delay(menuScrollSpeed);  //  wait for a set length of time (so the menu dosen't scroll by way to fast)
+    if (!screensaver) {
+      up_switch_Pressed();  //  call a function (can you guess which one?)
+      delay(menuScrollSpeed);  //  wait for a set length of time (so the menu dosen't scroll by way to fast)
+    }
+    
+    input = true;
+
+  } else if (up_switch.isPressed()) {
+    input = true;
   }
 
   if (down_switch.released()) {  //  if the "down" button was released sience the last update
-    down_switch_Pressed();  //  call a function (can you guess which one?)
+    if (!screensaver) {
+      down_switch_Pressed();  //  call a function (can you guess which one?)
+    }
+    
+    input = true;
 
   } else if (down_switch.isPressed() && (down_switch.currentDuration() >= menuButtonHoldTime)) {
-    down_switch_Pressed();  //  call a function (can you guess which one?)
-    delay(menuScrollSpeed);  //  wait for a set length of time (so the menu dosen't scroll by way to fast)
+    if (!screensaver) {
+      down_switch_Pressed();  //  call a function (can you guess which one?)
+      delay(menuScrollSpeed);  //  wait for a set length of time (so the menu dosen't scroll by way to fast)
+    }
+    
+    input = true;
+    
+  } else if (down_switch.isPressed()) {
+    input = true;
+  }
+
+  if (input) {
+    lastUserInput = core1Time;
   }
 }  //  checkMenuButtons()

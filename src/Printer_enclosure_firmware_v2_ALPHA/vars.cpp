@@ -24,7 +24,7 @@
 
 
 //  preferences (how it will opperate) | some of these are volitile, not constant, as they can be edited via the menu
-volatile bool lights_On_On_Door_Open = true;  //  controlls if the lights turn on when the door is opened.
+bool lights_On_On_Door_Open = true;  //  controlls if the lights turn on when the door is opened.
 volatile bool saveStateOnPowerLoss = true;
 
 volatile uint8_t nameScrollSpeed = 100;  //  how fast the print name will scroll by (lower is faster, miliseconds per pixel)
@@ -33,6 +33,7 @@ volatile uint8_t fanOffVal = 0;  //  the pwm value used when the fan should be o
 volatile uint8_t fanMidVal = 127;  //  the pwm value used when the fan should be halfway on
 volatile uint8_t fanOnVal = 255;  //  the pwm value used when the fan should be all the way on
 volatile uint8_t defaultMaxFanSpeed = 255;  //  the default maxumum fan speed (what will be used if nothing else is specified)
+volatile uint8_t hysteresis = 1;  //  the "dead zone" value, the temp can get above or below the target by this much before action is taken
 volatile uint8_t bigDiff = 3;  //  the value used to define a large temp difference (in deg. c.)
 volatile uint8_t cooldownDif = 3;  //  if the inside and outside temps are within this value of eachother, cooldown() will go to standby()
 volatile uint8_t dimingTime = 3;  //  this * 255 = the time (in miliseconds) that togling the lights will take
@@ -42,7 +43,9 @@ volatile uint8_t servo1Open = 180;  //  the "open" position for servo 1
 volatile uint8_t servo2Open = 180;  //  the "open" position for servo 2
 volatile uint8_t servo1Closed = 0;  //  the "closed" position for servo 1
 volatile uint8_t servo2Closed = 0;  //  the "closed" position for servo 2
-volatile uint8_t sensorReadInterval = 30;  //  this is set to 30 seconds
+volatile uint8_t sensorReadInterval = 60;  //  this is set to 30 seconds
+
+uint16_t screensaverTime = 30; // how long without user input intil the screensave is displayed (s)
 
 volatile uint16_t fanKickstartTime = 1000; //  the time (in miliseconds) that the fan will be turned on at 100% before being set to its target value
 volatile uint16_t menuButtonHoldTime = 750;  //  how long the "up" or "down" buttons need to be held for to be counted as being held (in miliseconds)
@@ -60,38 +63,39 @@ mutex_t PSU_mutex;
 uint32_t PSU_mutex_owner;
 
 volatile bool PSUIsOn;
-volatile bool tmp_bool;  //  a bool used to store the value of a menu item of the same datatype while it is being edited
-volatile uint8_t tmp_uint8t;  //  a byte used to store the value of a menu item of the same datatype while it is being edited
-volatile int8_t tmp_int8t;
-volatile uint16_t tmp_uint16t;
-volatile int16_t tmp_int16t;
-volatile uint32_t tmp_uint32t;
-volatile int32_t tmp_int32t;
 
-volatile char printName[256];  //  an array of characters to store the print name
+bool tmp_bool; // a bool used to store the value of a menu item of the same datatype while it is being edited
+uint8_t tmp_uint8t; // a byte used to store the value of a menu item of the same datatype while it is being edited
+int8_t tmp_int8t;
+uint16_t tmp_uint16t;
+int16_t tmp_int16t;
+uint32_t tmp_uint32t;
+int32_t tmp_int32t;
 
-volatile uint8_t I2cBuffer_readPos = 0;  //  stores where to read from the buffer next
-volatile uint8_t I2cBuffer_numBytes = 0;  //  stores the number of bytes to be read from the buffer
+volatile char printName[256]; // an array of characters to store the print name
 
-volatile int32_t errorInfo = 0;  //  records aditionall info about any posible errors
+volatile int32_t errorInfo = 0; // records aditionall info about any posible errors
 
-volatile bool findPressedState = true;
+bool findPressedState = true;
 
 #if !manualPressedState
-volatile bool doorSw_ps = LOW;
-volatile bool lightSw_ps = LOW;
-volatile bool coolDownSw_ps = LOW;
-volatile bool sellSw_ps = LOW;
-volatile bool upSw_ps = LOW;
-volatile bool downSw_ps = LOW;
+bool doorSw_ps = LOW;
+bool lightSw_ps = LOW;
+bool coolDownSw_ps = LOW;
+bool sellSw_ps = LOW;
+bool upSw_ps = LOW;
+bool downSw_ps = LOW;
 #endif
 
+bool screensaver = false; // tracks if the screensaver is active
 bool bootsel = false;
+bool hysteresisTriggered = false;
+bool fanWasOn = false;
 volatile bool turnLightOff = false;
 volatile bool core1StartStartup = false;
 volatile bool checkI2c = false;
 volatile bool startupError = false;
-volatile bool dispLastLoop = false;  //  tracks if the print name was displayed last loop
+bool dispLastLoop = false;  //  tracks if the print name was displayed last loop
 volatile bool errorDetected = false;  //  tracks if an error has been detected (used to instruct the second core (core1) to shut down)
 volatile bool coreZeroShutdown = false;  //  tracks if the first core (core0) has safed everything and entered an infinite loop (used only when an error is detected)
 volatile bool coreOneShutdown = false;  //  tracks if the second core (core1) has stoped doing stuff and entered an infinite loop (used only when an error is detected)
@@ -102,12 +106,11 @@ volatile bool doorOpen = true;  //  tracks if the door is open
 volatile bool lightSetState = false;  //  tracks the state the lights should be in
 volatile bool changeLights = false;  //  tracks if the lights need to be changed (only used for printer-commanded changes)
 volatile bool lightState = false;  //  tracks the status of the lights
-volatile bool editingMenuItem = false;  //  tracks wheather the sellected menu item is being edited
-volatile bool printingLastLoop = false;  //  tracks, basically, if the last loop went to printing() or not. used to avoid falsely seting heatingMode
-volatile bool heatingMode = false;  //  tracks if the enclosure is in heating or cooling mode (false = cooling, true = heating)
+bool editingMenuItem = false;  //  tracks wheather the sellected menu item is being edited
+bool heatingMode = false;  //  tracks if the enclosure is in heating or cooling mode (false = cooling, true = heating)
 
-volatile uint8_t selectedItem = 0;  //  tracks the sellected menu item
-volatile uint8_t topDisplayItem = 0;  //  tracks the menu item that is at the top of the display
+uint8_t selectedItem = 0;  //  tracks the sellected menu item
+uint8_t topDisplayItem = 0;  //  tracks the menu item that is at the top of the display
 volatile uint8_t mode = 1;  //  tracks the enclosures operating mode (0 = error, 1 = standby, 2 = cooldown, 3 = printing)
 volatile uint8_t oldMode = 1;  //  tracks the mode the enclosure was in last loop
 volatile uint8_t maxFanSpeed = defaultMaxFanSpeed;  //  tracks the maximum fan speed alowable
@@ -123,6 +126,10 @@ uint8_t oldS2_Pos;  //  tracks the old position of servo 2
 int16_t heaterTemp = 20;  //  tracks the heater temp
 int16_t inTemp = 20;  //  tracks the temp inside the enclosure
 int16_t outTemp = 20;  //  tracks the temp outside the enclosure
+
+uint32_t lastUserInput; // tracks when the last user input was
+
+uint32_t core1Time; // updated each loop of core1, keeps track of the time for that loop
 
 //********************************************************************************************************************************************************************************
 
@@ -407,6 +414,12 @@ void light::tick() {
   }  //  if (light_changing)
 }  //  light::tick()
 
+void light::blip(uint32_t microseconds) {
+  analogWrite(light_pin, (light_state * 255) ^ 4); // set the lights to 4/255 of set to LOW, 251/255 if set to HIGH
+  delayMicroseconds(microseconds);
+  analogWrite(light_pin, (light_state * 255));
+}
+
 
 //********************************************************************************************************************************************************************************
 
@@ -429,8 +442,10 @@ menuItem mainMenu[] = {
   menuItem(&dimingTime, 1, 1, 255, "M.l. dmng. spd."),
   menuItem(&pdl_DimingTime, 1, 1, 255, "Pd.l. dmng. spd."),
   menuItem(&menuButtonHoldTime, 3, 10, 9999, "Btn. hld. t."),
+  menuItem(&screensaverTime, 3, 10, 3600, "Screen saver t."),
   menuItem(&bigDiff, 1, 1, 99, "Big temp diff."),
   menuItem(&cooldownDif, 1, 1, 99, "Cooldown diff."),
+  menuItem(&hysteresis, 1, 0, 99, "Hysterisis"),
   menuItem(&defaultMaxFanSpeed, 1, 0, 255, "Def. max f. spd."),
   menuItem(&fanKickstartTime, 3, 0, 9999, "Fan ks. time"),
   menuItem(&fanOnVal, 1, 0, 255, "Fan on val."),

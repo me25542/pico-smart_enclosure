@@ -25,17 +25,48 @@
 
 #include "vars.hpp"
 #include "otherFuncs.hpp"
+#include "ISRs.hpp"
 
 #include "modeFuncs.hpp"
 
 
+void standard() {
+  //  update if the BOOTSEL button is pressed
+  bootsel = BOOTSEL;
+
+  //  update the diming speeds of the lights. we don't need to do this in real-time, so we do it here not in the other core
+  printDoneLight.setSpeed(pdl_DimingTime);
+  mainLight.setSpeed(dimingTime);
+
+  //  set the print done light to the correct state
+  printDoneLight.setState(printDone);
+
+  //  set the lights to the correct state (only used for printer-commanded states)
+  mainLight.setState(lightSetState);
+
+  if (changeLights) {  //  if the light's state needs to change:
+    mainLight.changeState();
+  }
+
+  //  check for any commands sent via USB
+  serialReceiveEvent();
+  
+  if (checkI2c) {
+    parseI2C();
+  }
+
+  //  check if the screen is connected
+  isScreenConnected();
+
+  //  get temps:
+  getTemp();
+}
+
 // the function called every loop when the mode is standby:
 const void standby() {
   #if debug
-  printf("Doing standby()\n");  //  print a debug message over the sellected debug port
+  Serial.printf("Doing standby()\n");  //  print a debug message over the sellected debug port
   #endif
-
-  getTemp();
 
   maxFanSpeed = defaultMaxFanSpeed;  //  reset the max fan speed
 
@@ -45,54 +76,44 @@ const void standby() {
   //  move servos to home position:
   setServos(servo1Closed, servo2Closed);  //  move servos 1 and 2 to home
 
-  setPSU(mainLight.needsPower() ||  printDoneLight.needsPower()); //  turn on the PSU if the lights are on OR if the PSU shouldn't be turned off OR if the print is done (the print done light is on)
-
-  printingLastLoop = false;  //  remember that last loop wasn't in printing mode
+  setPSU(mainLight.needsPower() || printDoneLight.needsPower()); //  turn on the PSU if the lights are on OR if the PSU shouldn't be turned off OR if the print is done (the print done light is on)
 
   delay(10);  //  wait for 10ms
 
   #if debug
-  printf("Did standby().\n");  //  print a debug message over the sellected debug port
+  Serial.printf("Did standby().\n");  //  print a debug message over the sellected debug port
   #endif
 }
 
 //  the function called every loop when the mode is cooldown:
 const void cooldown() {
   #if debug
-  printf("Doing cooldown()...\n");  //  print a debug message over the sellected debug port
+  Serial.printf("Doing cooldown()...\n");  //  print a debug message over the sellected debug port
   #endif
 
   maxFanSpeed = defaultMaxFanSpeed;  //  reset the max fan speed
 
-  //  get temps:
-  getTemp();
-
   if ((inTemp - cooldownDif) > outTemp) {  //  if the temp inside is much greater than the temp outside:
     //  ensure the fan and the lights have power if they need it:
-    setPSU(!doorOpen || mainLight.needsPower() ||  printDoneLight.needsPower());  //  if the door is closed OR if the lights are on OR the PSU shouldn't be turned off OR if the print is done (print done light on), turn on the PSU. otherwise, turn it off
+    setPSU(!doorOpen || mainLight.needsPower() || printDoneLight.needsPower());  //  if the door is closed OR if the lights are on OR the PSU shouldn't be turned off OR if the print is done (print done light on), turn on the PSU. otherwise, turn it off
 
     //  set the heaters and fan:
     setHeaters(false, false, fanOnVal);  //  turn off heater 1 and heater 2, turn on the fan at 100% if the door is closed
 
   } else {
-    mode = 1;  //  set the mode to standby
+    mode = STANDBY;  //  set the mode to standby
   }
 
-  printingLastLoop = false;  //  remember that last loop wasn't in printing mode
-
   #if debug
-  printf("Did cooldown().\n");  //  print a debug message over the sellected debug port
+  Serial.printf("Did cooldown().\n");  //  print a debug message over the sellected debug port
   #endif
 }
 
 //  the function called every loop when the mode is printing:
 const void printing() {
   #if debug
-  printf("Doing printing()...\n");  //  print a debug message over the sellected debug port
+  Serial.printf("printing() called.\n");  //  print a debug message over the sellected debug port
   #endif
-
-  //  get temps:
-  getTemp();
 
   //  ensure the fan, heaters, and servos have power:
   setPSU(true);  //  turn on the PSU
@@ -100,17 +121,13 @@ const void printing() {
   //  make it so that the logic can't be messed up by the printer setting the set temp at an unconviniant time
   uint8_t setTemp = globalSetTemp;
 
-  if (! printingLastLoop) {  //  if printing() wasn't called last loop:
-    if (inTemp > setTemp) {  //  if the inside is hoter than it should be:
-      heatingMode = false;  //  set the heating mode to cooling (heatingMode tracks if the default should be heating or cooling)
-      
-    } else {  //  if the inside is colder than it should be:
-      heatingMode = true;  //  set the heating mode to heating (heatingMode tracks if the default should be heating or cooling)
-    }
+  if (oldMode != PRINTING) {  //  if printing() wasn't called last loop:
+    heatingMode = !(inTemp > setTemp);  //  set if we are heating or cooling
+    hysteresisTriggered = false;
   }
 
   if (heatingMode) {  //  if we think that we should be heating the enclosure:
-    if ((inTemp + bigDiff) < setTemp) {  //  if the inside temp is much less than it should be:
+    if ((inTemp + hysteresis) < setTemp) {  //  if the inside temp is <hysteresis> less than it should be:
       setHeaters(true, false, fanOffVal);
 
     } else if ((inTemp - bigDiff) > setTemp) {  //  if the inside temp is much higher than it shuld be:
@@ -119,27 +136,39 @@ const void printing() {
 
     } else if (inTemp > setTemp) {  //  if the inside temp is higher than it should be:
       setHeaters(false, false, fanOffVal);
-
     }
 
   } else {  //  if we think we should be cooling the enclosure:
-    if ((inTemp - bigDiff) > setTemp) {  //  if the inside temp is much higher than it should be:
-      setHeaters(false, false, fanOnVal);
+    if (inTemp > setTemp) {  //  if the inside temp is hotter than itshould be
+      if (inTemp > (setTemp + hysteresis)) {  //  if the hysteresis were just triggered (if the inside temp is too hot by enough)
+        hysteresisTriggered = true;
+      }
 
-    } else if ((inTemp + bigDiff) < setTemp) {  //  if the inside temp is much less than it should be:
-      heatingMode = true;
-      setHeaters(true, false, fanOffVal);
+      if (hysteresisTriggered) {
+        if (inTemp > (setTemp + bigDiff)) {  //  if the inside temp is too high by a large enough margin that it would brake the maping logic
+          setHeaters(false, false, fanOnVal);  //  turn off the heaters, turn on the fan
 
-    } else if (inTemp < setTemp) {  //  if the inside temp is less than it should be:
+        } else {  //  if the maping logic won't be broken
+          setHeaters(false, false, map(inTemp, setTemp, (setTemp + bigDiff), fanOffVal, fanOnVal));  //  set the fan to a value coresponding to how different the temp is from the target
+        }
+
+      } else {
+        setHeaters(false, false, fanOffVal);  //  turn off the heaters and the fan
+      }
+
+    } else if ((inTemp + bigDiff) < setTemp) {  //  if the inside temp is much less than it should be
+      heatingMode = true;  //  we should be heating, not cooling
+      hysteresisTriggered = false;
+      setHeaters(true, false, fanOffVal);  //  turn on the heater, turn off the fan
+
+    } else {  //  if the inside temp is just a bit less than it should be, or what it should be
+      hysteresisTriggered = false;
       setHeaters(false, false, fanOffVal);
-
     }
   }
 
-  printingLastLoop = true;  //  remember that last loop was in printing mode
-
   #if debug
-  printf("Did printing().\n");  //  print a debug message over the sellected debug port
+  Serial.printf("Exiting printing().\n");  //  print a debug message over the sellected debug port
   #endif
 }
 
@@ -218,7 +247,7 @@ const void error() {
 
 void coreOneError() {
   #if debug
-  printf("coreOneError() called\n");
+  Serial.printf("coreOneError() called\n");
   #endif
 
   while (true) {  //  loop forever

@@ -32,7 +32,7 @@ void requestEvent() {
   Wire1.write(mode);  //  send (back to the printer) the current mode the enclosure is in
 
   #if debug
-  printf("Printer requested data. Sending: %u", mode);  //  print a debug message over the sellected debug port
+  Serial.printf("Printer requested data. Sending: %u", mode);  //  print a debug message over the sellected debug port
   #endif
 }
 
@@ -47,7 +47,7 @@ bool parseTemp(uint8_t recVal, uint8_t num, bool final) {
 
 bool parseMode(uint8_t recVal, uint8_t num, bool final) {
   if (recVal < maxMode) {  //  if the recieved value is within the acceptable range
-    if (recVal == 0) {
+    if (recVal == ERROR) {
       errorOrigin = 4;  //  record that the printer commanded the error
       errorInfo = mode;  //  record the old mode
     }
@@ -169,7 +169,7 @@ void parseI2C() {
 
   #endif  //  end of that IF statement
   
-  static bool (*parsers[])(uint8_t, uint8_t, bool) = {parseMode, parseTemp, parsePrintDone, parseMaxFanSpeed, parseLights, parseName};  //  an array of functions to call
+  static bool (*parsers[])(uint8_t, uint8_t, bool) = {parseMode, parseTemp, parsePrintDone, parseMaxFanSpeed, parseLights, parseName}; // an array of functions to call
   const static uint8_t parserCount = sizeof(parsers) / sizeof(parsers[0]);  //  find the number of parser functions (at compile, not during runtime)
 
   while (I2cBuffer.available()) {  //  repeat for all commands sent by the printer
@@ -244,7 +244,7 @@ void I2cReceived(int numBytes) {
 
 void serialReceiveEvent() {
   #if debug
-  printf("serialRecieveEvent() called.\n");  //  print a debug message over the sellected debug port
+  Serial.printf("serialRecieveEvent() called.\n");  //  print a debug message over the sellected debug port
   #endif
   if (Serial.available()) {  //  if there are received bytes in the buffer:
     uint8_t serialRecVal = static_cast<uint8_t>(Serial.parseInt());  // set serialRecVal ("it") to the first valid set of characters in the buffer, converted from a string of ASCII chars to an int
@@ -304,7 +304,7 @@ void serialReceiveEvent() {
 inline void menuBackup() {
   EEPROM.write(0, 0x00);  //  we don't want to use the data unless everything is written
 
-  uint16_t memAdr = 1024;  //  start with the adress at the start of the second kb of memory
+  uint16_t memAdr = 1023;  //  start with the adress at the start of the second kb of memory
       
   for (uint8_t i = 0; i < menuLength; i++) {
     switch (mainMenu[i].getDataType()) {
@@ -403,33 +403,45 @@ inline void versionBackup() {
   EEPROM.write(4, buildVersion);
 }
 
+inline void errorBackup() {
+  uint8_t currentVal = EEPROM.read(5);
+  uint8_t writeVal = (mode != ERROR) * 255;
+  if (currentVal != writeVal) {
+    EEPROM.write(5, writeVal); // write 0 to address 5 *only* if the mode is error. Otherwise write 255 to address 5
+    EEPROM.commit();
+  }
+}
+
 void losingPower() {
-  if (PSUIsOn && !bootsel && mode != 0) {  //  if the PSU should be on (if we are losing power) AND the BOOTSEL button isn't pressed AND the mode isn't error
-    if (saveStateOnPowerLoss) {  //  if we are saving the state
-      //  turn stuff off
-      digitalWrite(lightsPin, !mainLightsOn);  //  turn off the lights
-      digitalWrite(fanPin, !fanOn);  //  turn off the fan
-      digitalWrite(heater1Pin, HIGH);  //  turn off heater 1
-      digitalWrite(heater2Pin, HIGH);  //  turn off heater 2
-      digitalWrite(psPin, LOW);  //  turn off the PSU
+  if (PSUIsOn && !bootsel) {  //  if the PSU should be on (if we are losing power) AND the BOOTSEL button isn't pressed
+    if (mode != ERROR) {
+      if (saveStateOnPowerLoss) {  //  if we are saving the state
+        //  turn stuff off
+        digitalWrite(lightsPin, !mainLightsOn);  //  turn off the lights
+        digitalWrite(fanPin, !fanOn);  //  turn off the fan
+        digitalWrite(heater1Pin, HIGH);  //  turn off heater 1
+        digitalWrite(heater2Pin, HIGH);  //  turn off heater 2
+        digitalWrite(psPin, LOW);  //  turn off the PSU
 
-      //  store the version info of the code that saved the info (we don't want to use data from incompatible past versions)
-      versionBackup();
+        //  store the version info of the code that saved the info (we don't want to use data from incompatible past versions)
+        versionBackup();
 
-      #if !manualPressedState
-      buttonBackup();
-      #endif
+        #if !manualPressedState
+        buttonBackup();
+        #endif
 
-      menuBackup();
+        menuBackup();
+
+      } else {  //  if we do not save the state on power loss
+        if (static_cast<bool>(EEPROM.read(0))) {  //  if the memory currently says to use the stored data
+          EEPROM.write(0, 0x00);  //  remember to not use any of the stored menu data
+          EEPROM.write(9, 0xFF);  //  remember to not use any of the stored button data
+        }  //  if (static_cast<bool>(EEPROM.read(0)))
+      }  //  else (  if (saveStateOnPowerLoss)  )
 
       EEPROM.commit();  //  commit changes to memory. we don't check if this was sucessful, because, well, what would we do if it wasn't?
+    }
 
-    } else {  //  if we do not save the state on power loss
-      if (static_cast<bool>(EEPROM.read(0))) {  //  if the memory currently says to use the stored data
-        EEPROM.write(0, 0x00);  //  remember to not use any of the stored menu data
-        EEPROM.write(9, 0xFF);  //  remember to not use any of the stored button data
-        EEPROM.commit();  //  commit changes to memory. we don't check if this was sucessful, because, well, what would we do if it wasn't?
-      }  //  if (static_cast<bool>(EEPROM.read(0)))
-    }  //  else (  if (saveStateOnPowerLoss)  )
+    errorBackup();
   }  //  if (PSUIsOn && !BOOTSEL)
 }  //  void losingPower()
