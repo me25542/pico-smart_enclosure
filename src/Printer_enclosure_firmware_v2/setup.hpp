@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Dalen Hardy
+ * Copyright (c) 2024-2025 Dalen Hardy
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,9 +20,23 @@
  * SOFTWARE.
 */
 
-#ifndef SETUP_HPP
-#define SETUP_HPP
+#pragma once
 
+#include "config.hpp"
+#include <Arduino.h>
+
+#include <EEPROM.h>
+#include <Wire.h>  //  Include the library for I2C comunication
+#include <Adafruit_MCP9808.h>  //  Include the library for using the temp sensors
+#include <Adafruit_GFX.h>  //  Include the graphics library
+#include <Adafruit_SSD1306.h>  //  Include the library for controling the screen
+#include <Servo.h>  //  include the library for controling servos
+#include <Bounce2.h>  //  include the debouncing library
+
+#include "vars.hpp"
+#include "customLibs.hpp"
+#include "otherFuncs.hpp"
+#include "ISRs.hpp"
 
 /**
 * @brief initializes non-const variables to there initial values
@@ -60,6 +74,11 @@ void pinSetup();
 bool menuSetup();
 
 /**
+* @brief sets the menu backup vector to the correct size for use
+*/
+void menuBackupSetup();
+
+/**
 * @brief returns true if the stored version info matches that of the running code, false if it doesn't
 */
 bool checkVersion();
@@ -90,5 +109,3 @@ void backupRecovery();
 * @brief starts serial (USB) communication | Call from the core you want to handel serial comunication
 */
 void serialSetup();
-
-#endif

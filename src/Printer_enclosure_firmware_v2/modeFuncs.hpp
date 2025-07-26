@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Dalen Hardy
+ * Copyright (c) 2024-2025 Dalen Hardy
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,9 +20,18 @@
  * SOFTWARE.
 */
 
-#ifndef MODEFUNCS_HPP
-#define MODEFUNCS_HPP
+#pragma once
 
+#include "config.hpp"
+#include <Arduino.h>
+#include <pico/stdlib.h>
+#include <Wire.h>
+#include "customLibs.hpp"
+#include "vars.hpp"
+#include "setup.hpp"
+#include "otherFuncs.hpp"
+#include "menuFuncs.hpp"
+#include "ISRs.hpp"
 
 /**
 * @brief called every loop, regardless of mode
@@ -45,13 +54,7 @@ const void cooldown();
 const void printing();
 
 /**
-* @brief the function called if an error is detected
+* @brief the function called if an error is detected by the first core to detect the error
+* @return will never return
 */
 const void error();
-
-/**
-* @brief the function called to handel errors in core one
-*/
-void coreOneError();
-
-#endif

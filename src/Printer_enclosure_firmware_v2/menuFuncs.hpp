@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Dalen Hardy
+ * Copyright (c) 2024-2025 Dalen Hardy
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,8 +20,15 @@
  * SOFTWARE.
 */
 
-#ifndef MENUFUNCS_HPP
-#define MENUFUNCS_HPP
+#pragma once
+
+#include "api/String.h"
+#include "config.hpp"
+#include <Arduino.h>
+#include <cstdint>
+#include "vars.hpp"
+#include "customLibs.hpp"
+#include "otherFuncs.hpp"
 
 /**
 * @brief clears the print name variable
@@ -29,7 +36,7 @@
 void clearName();
 
 /**
-* @brief handels scroling of the print name. call as often as possible
+* @brief handels scroling of the print name
 */
 void scrollName(uint8_t height);
 
@@ -39,9 +46,20 @@ void scrollName(uint8_t height);
 void printHeader();
 
 /**
-* @brief the lower-level function that actually handels printing syuff to the screen | working on making this *only* print the menu
+* @brief Prints one menu item
+* @param index the index of the menu item in the main menu
+* @param height the height to print the menu item at, in pixels from the top of the screen
+* @param onTop whether or not this is the top-most menu item
 */
-void printMenu(int32_t lower_Bound, int32_t uper_Bound, bool dispName);
+void PrintMenuItem(uint8_t index, uint8_t height, bool topItem);
+
+/**
+* @brief the lower-level function that prints the menu to the screen
+* @param startHeight the height at which to start printing the menu items, in pixels from the top of the screen
+* @param lower_bound the lower numarical bound (inclusive) of the range of menu items to be printed (goes at the top of the screen)
+* @param upper_bound the upper numarical bound (inclusive) of the range of menu items to be printed (goes at the bottom of the screen)
+*/
+bool printMenu(uint8_t startHeight, uint8_t lowerBound, uint8_t uperBound);
 
 /**
 * @brief prints a screensaver on the entire screen
@@ -54,7 +72,7 @@ void printScreensaver();
 void updateScreen();
 
 /**
-* @brief the function called when the "sell." menu button is pressed
+* @brief the function called when the "sellect" menu button is pressed
 */
 void sell_switch_Pressed();
 
@@ -73,4 +91,12 @@ void down_switch_Pressed();
 */
 void checkMenuButtons();
 
-#endif
+/**
+* @brief updates the backup copy of menu data
+*/
+void updateMenuBackup();
+
+/**
+* @brief updates the menu backup if it has been long enough since the last backup
+*/
+bool periodicMenuBackup();

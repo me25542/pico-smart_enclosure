@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Dalen Hardy
+ * Copyright (c) 2024-2025 Dalen Hardy
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,27 +20,49 @@
  * SOFTWARE.
 */
 
-#ifndef OTHERFUNCS_HPP
-#define OTHERFUNCS_HPP
+#pragma once
 
+#include "Adafruit_MCP9808.h"
+#include "config.hpp"
+#include <Arduino.h>
+#include <pico/stdlib.h>
+#include <Wire.h>
+#include <Bounce2.h>  //  include the debouncing library
+#include "vars.hpp"
+#include "customLibs.hpp"
 
 /**
-* @brief a simple function to blink the built-in LED
+* @brief handels setting the mode to error and recording data about the error in flash
 */
-void blinkLED(unsigned long blinkTime);
+void setError(uint8_t origin, uint32_t info, bool recoverable);
+
+/**
+* @brief converts a number to base 4, encoded as a std::vector with index [0] as the least significant digit
+*/
+std::vector<uint8_t> base2ToBase4(uint8_t inut);
+
+/**
+* @brief handels the blinking of the built-in LED to indicate status
+*/
+void blinkLED();
+
+/**
+* @brief blinks out an error code through the built-in LED
+*/
+void blinkErrorCode(uint8_t code);
 
 /**
 * @brief tries to obtain the I2C mutex, sets mode to error if it times out
-* @param timeout_id stored in errorInfo on timeout
+* @param timeoutId stored in errorInfo on timeout
 */
-bool useI2C(uint16_t timeout_id);
+bool useI2C(uint16_t timeoutId);
 
 /**
 * @brief tries to obtain the I2C mutex, sets mode to error if it times out
 * @param timeout_id stored in errorInfo on timeout
 * @param timeout_info also stored in errorInfo on timeout
 */
-bool useI2C(uint16_t timeout_id, uint16_t timeout_info);
+bool useI2C(uint16_t timeoutId, uint16_t timeout_info);
 
 /**
 * @brief releases the I2C mutex
@@ -68,19 +90,39 @@ bool isScreenConnected();
 bool setPSU(bool state);
 
 /**
+* @brief to be called each loop, updates the servos
+*/
+void updateServos();
+
+/**
 * @brief sets the position of the servos
 */
 void setServos(uint8_t s1_Pos, uint8_t s2_Pos);
 
 /**
-* @brief sets the state of both heaters, and the fan (the temp-related stuff)
+* @brief call every loop, handels updating the fan
 */
-void setHeaters(bool h1_On, bool h2_On, uint8_t fanVal);
+void updateFan();
+
+/**
+* @brief sets the speed (duty cycle) of the fan
+*/
+void setFan(uint8_t dutyCycle);
+
+/**
+* @brief sets the state of both heaters
+*/
+void setHeaters(bool h1_On, bool h2_On);
 
 /**
 * @brief starts serial (USB) comunication (takes ~10ms) | returns 1 if a computer is connected, 0 if not
 */
 bool startSerial();
+
+/**
+* @brief reads the temperature from a sensor, and returns the result in fixed-point formating
+ */
+uint32_t readTempSensor(Adafruit_MCP9808* sensor, uint8_t sensorID, uint8_t SCALE_MULT, uint8_t SCALE_SHIFT, uint16_t scaledMaxTemp);
 
 /**
 * @brief gets all temp sensor data | returns 0 on failure, 1 on sucess
@@ -112,4 +154,17 @@ void doorClosing();
 */
 void checkButtons();
 
-#endif
+/**
+* @brief sets the state of most GPIO pins to a disconnected, high-impedance state. Exceptions: error light and built-in LED
+*/
+void gpioDisable();
+
+/**
+* @brief handels logic for controling the heaters and fan when the control mode is set to controlMode_TEMP
+*/
+void heatingLogic_temp();
+
+/**
+* @brief handels the logic for controling the heaters and fan when the control mode is set to controlMode_MANUAL
+*/
+void heatingLogic_manual();

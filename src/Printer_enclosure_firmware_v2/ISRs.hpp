@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Dalen Hardy
+ * Copyright (c) 2024-2025 Dalen Hardy
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,9 +20,13 @@
  * SOFTWARE.
 */
 
-#ifndef ISRS_HPP
-#define ISRS_HPP
+#pragma once
 
+#include "config.hpp"
+#include <Arduino.h>
+#include <EEPROM.h>
+#include "customLibs.hpp"
+#include "vars.hpp"
 
 /**
 * @brief the function called on data requested from the printer
@@ -60,6 +64,24 @@ bool parsePrintDone(uint8_t recVal, uint8_t num, bool final);
 bool parseName(uint8_t recVal, uint8_t num, bool final);
 
 /**
+* @brief parses each byte marked as setting the mode of control for the heater and fan
+* @note developmental
+*/
+bool parseControlMode(uint8_t recVal, uint8_t num, bool final);
+
+/**
+* @brief parses each byte marked as setting the heater when the control mode is set to manual
+* @note developmental
+*/
+bool parseHeater(uint8_t recVal, uint8_t num, bool final);
+
+/**
+* @brief parses each byte marked as setting the fan speed when the control mode is set to manual
+* @note developmental
+*/
+bool parseFan(uint8_t recVal, uint8_t num, bool final);
+
+/**
 * @brief the function called to parse a byte the same as v1 would
 */
 void compatabilityParser(uint8_t recVal);
@@ -84,10 +106,12 @@ void parseI2C();
 */
 void I2cReceived(int numBytes);
 
+#if serialControll
 /**
 * @brief called to parse any data that might have been received over Serial (USB)
 */
 void serialReceiveEvent();
+#endif
 
 /**
 * @brief backs up all settings in the menu to flash
@@ -112,9 +136,6 @@ inline void versionBackup();
 inline void errorBackup();
 
 /**
-* @brief the ISR called when the POK pin on the PSU signals animanent power loss. if this is unexpected, will backup all settings and some other stuff to flash
+* @brief the ISR called when the POK pin on the PSU signals an imanent power loss. if this is unexpected, will backup all settings and some other stuff to flash
 */
 void losingPower();
-
-
-#endif
