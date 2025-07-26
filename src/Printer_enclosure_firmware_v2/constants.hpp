@@ -1,5 +1,10 @@
+/**
+* @file constants.hpp
+* @brief contains program-specific constants that aren't configurable | **MUST** BE PLACED *BEFORE* Arduino.h
+*/
+
 /*
- * Copyright (c) 2024 Dalen Hardy
+ * Copyright (c) 2024-2025 Dalen Hardy
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,22 +25,26 @@
  * SOFTWARE.
 */
 
-#ifndef BUTTONSETUP_H
-#define BUTTONSETUP_H
+#pragma once
 
-    //  set switch pinModes
-  door_switch.attach(doorSwitchPin, INPUT_PULLUP);
-  light_switch.attach(lightSwitchPin, INPUT_PULLUP);
-  coolDown_switch.attach(coolDownSwitchPin, INPUT_PULLUP);
-
-  //  set switch debounce intervals
-  door_switch.interval(100);
-  light_switch.interval(100);
-  coolDown_switch.interval(100);
-
-  //  set switch pressed states
-  door_switch.setPressedState(LOW);
-  light_switch.setPressedState(LOW);
-  coolDown_switch.setPressedState(LOW);
-
+#ifndef USE_TINYUSB // IDK why this is needed, but it prevented redefinition
+#define USE_TINYUSB // inportant for debugging to keep this how it is unless you *realy* know what you are doing
 #endif
+
+#define MODE_ERROR 0
+#define MODE_STANDBY 1
+#define MODE_COOLDOWN 2
+#define MODE_PRINTING 3
+
+#define MAX_MODE 4 // the value at which the mode parser will start to ignore the sent byte
+
+#define DEFAULT_MODE MODE_STANDBY
+
+#define CHARACTER_HEIGHT 8 ///< the height of a size 1 character
+#define CHARACTER_WIDTH 6 ///< the width of a size 1 character
+
+#define CONTROL_MODE_ERROR 0
+#define CONTROL_MODE_TEMP 1 ///< maintain target temperature
+#define CONTROL_MODE_MANUAL 2 ///< follow manual control
+
+#define SERIAL_SPEED 115200 ///< the buad rate that will be used for serial communication
