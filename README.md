@@ -84,7 +84,7 @@ A raspberry Pi might also work (they have I2C) if you are using one for Octoprin
 If you want to contribute in any way, feel free to do so!
 
 Whether it's reporting bugs or writing code, your contributions will be helpful.
-- *For code contributions, a contributing guide may be available soon*
+- *For code contributions, see `docs\CONTRIBUTING.md`*
 
 ### Ideas for features to add
 - Thermal runaway protection
@@ -108,3 +108,4 @@ I couldn't find code for a smart printer enclosure that had all the features I w
 Mainly, I wanted something that was automatic; I didn't want to have to set fans, heaters, etc. *every single print*.
 So, I spent a lot of time making this.
 I believe it is the most fully featured code base for a 3d printer enclosure you could find, mainly because I couldn't find a more fully featured one.
+
