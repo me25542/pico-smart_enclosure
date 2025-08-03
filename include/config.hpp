@@ -37,9 +37,9 @@
 
 // version info (e.g. 1.2.3 : majorV. = 1, minorV. = 2, bugFixV. = 3)
 #define MAJOR_VERSION 2
-#define MINOR_VERSION 1
+#define MINOR_VERSION 2
 #define BUGFIX_VERSION 0
-#define BUILD_VERSION 24 // this might be useful if you make your own changes to the code
+#define BUILD_VERSION 0 // this might be useful if you make your own changes to the code
 
 // other
 
@@ -212,3 +212,4 @@ constexpr bool downSw_ps = LOW;
 #else
 #pragma message("The pressed states of the buttons are being set automatically; ensure none of them are pressed at boot")
 #endif
+
